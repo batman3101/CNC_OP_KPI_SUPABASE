@@ -1,0 +1,65 @@
+# 보안 파일
+cnc-op-kpi-management-d552546430e8.json
+*.key
+*.pem
+credentials.json
+client_secret.json
+
+# 작업공간 설정
+CNC OP KPI.code-workspace
+*.code-workspace
+
+# 가상환경
+.venv/
+__pycache__/
+venv/
+env/
+
+# Python
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Streamlit
+.streamlit/
+
+# 데이터 파일
+data/*.json
+!data/sample_data.json
+
+# 캐시 파일
+.cache/
+cache/
+*.cache
+
+# 시스템 파일
+.DS_Store
+Thumbs.db
+
+# 로그 파일
+*.log
+
+# 백업 파일
+*.bak
+
+# IDE 설정
+.idea/
+.vscode/
+*.swp
+*.swo
