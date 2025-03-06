@@ -334,7 +334,7 @@ def show_dashboard():
             color_discrete_sequence=['#d62728']
         )
         
-        fig.add_hline(y=5, line_dash="dash", line_color="red", annotation_text="목표 불량률 5%")
+        fig.add_hline(y=0.2, line_dash="dash", line_color="red", annotation_text="목표 불량률 0.2%")
         
         fig.update_layout(
             height=250,
