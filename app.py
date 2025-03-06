@@ -3,6 +3,7 @@ from datetime import datetime
 from utils.supabase_db import SupabaseDB  # SupabaseDB 클래스를 import
 import os
 from dotenv import load_dotenv
+import bcrypt
 
 # 환경 변수 로드
 load_dotenv()
@@ -94,10 +95,9 @@ if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 if 'username' not in st.session_state:
     st.session_state.username = None
-if 'admin_accounts' not in st.session_state:
-    st.session_state.admin_accounts = {
-        'zetooo1972@gmail.com': 'admin7472'
-    }
+if 'user_role' not in st.session_state:
+    st.session_state.user_role = None
+
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "dashboard"
 
@@ -112,35 +112,56 @@ if 'db' not in st.session_state:
     else:
         st.session_state.db = SupabaseDB()  # SupabaseDB 클래스의 인스턴스 생성
 
+def verify_password(plain_password, hashed_password):
+    """비밀번호 검증 함수"""
+    try:
+        # 해시된 비밀번호가 bcrypt 형식인지 확인
+        if hashed_password.startswith('$2'):
+            # bcrypt 해시 검증
+            return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+        else:
+            # 일반 텍스트 비밀번호 비교 (개발 환경용)
+            return plain_password == hashed_password
+    except Exception as e:
+        print(f"비밀번호 검증 중 오류 발생: {e}")
+        return False
+
 def show_login():
     st.title("로그인")
     
     with st.form("login_form"):
-        username = st.text_input("아이디")
+        email = st.text_input("이메일")
         password = st.text_input("비밀번호", type="password")
         submitted = st.form_submit_button("로그인")
         
         if submitted:
-            if (username in st.session_state.admin_accounts and 
-                st.session_state.admin_accounts[username] == password):
-                st.session_state.authenticated = True
-                st.session_state.username = username
-                st.success("로그인 성공!")
-                st.rerun()
+            if 'db' in st.session_state:
+                # Supabase에서 사용자 정보 조회
+                user = st.session_state.db.get_user(email)
+                
+                if user and verify_password(password, user['비밀번호']):
+                    st.session_state.authenticated = True
+                    st.session_state.username = user['이름']
+                    st.session_state.user_role = user['권한']
+                    st.success(f"{user['이름']}님, 로그인 성공!")
+                    st.rerun()
+                else:
+                    st.error("이메일 또는 비밀번호가 올바르지 않습니다.")
             else:
-                st.error("아이디 또는 비밀번호가 올바르지 않습니다.")
+                st.error("데이터베이스 연결이 설정되어 있지 않습니다.")
 
 # 로그인 상태가 아니면 로그인 페이지 표시
 if not st.session_state.authenticated:
     show_login()
 else:
     # 로그인 상태이면 메인 페이지 표시
-    st.sidebar.title("CNC KPI Management")
+    st.sidebar.title(f"안녕하세요, {st.session_state.username}님")
     
     # 로그아웃 버튼
     if st.sidebar.button("로그아웃"):
         st.session_state.authenticated = False
         st.session_state.username = None
+        st.session_state.user_role = None
         st.rerun()
 
     # 페이지 라우팅
@@ -179,8 +200,7 @@ else:
         show_model_management()
 
 def main():
-    st.title("CNC KPI Management")
-    # ... 나머지 코드 ...
+    pass
 
 if __name__ == "__main__":
     main() 
