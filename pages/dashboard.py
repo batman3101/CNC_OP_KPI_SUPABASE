@@ -6,6 +6,10 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+# 전역 설정 변수
+TARGET_DEFECT_RATE = 0.2  # 목표 불량률 (%)
+TARGET_ACHIEVEMENT_RATE = 90  # 목표 달성률 (%)
+
 def calculate_production_rate(records):
     """생산목표 달성률 계산"""
     total_target = sum(r.get('목표수량', 0) for r in records)
@@ -334,7 +338,8 @@ def show_dashboard():
             color_discrete_sequence=['#d62728']
         )
         
-        fig.add_hline(y=0.2, line_dash="dash", line_color="red", annotation_text="목표 불량률 0.2%")
+        fig.add_hline(y=TARGET_DEFECT_RATE, line_dash="dash", line_color="red", 
+                     annotation_text=f"목표 불량률 {TARGET_DEFECT_RATE}%")
         
         fig.update_layout(
             height=250,
@@ -418,15 +423,15 @@ def show_dashboard():
     st.markdown("<div class='section-title'>알림 및 예외 관리</div>", unsafe_allow_html=True)
     
     # 문제 있는 라인 식별
-    low_performance_lines = line_stats[line_stats['달성률'] < 90]
-    high_defect_lines = line_stats[line_stats['불량률'] > 0.2]
+    low_performance_lines = line_stats[line_stats['달성률'] < TARGET_ACHIEVEMENT_RATE]
+    high_defect_lines = line_stats[line_stats['불량률'] > TARGET_DEFECT_RATE]
     
     # 알림 표시
     if not low_performance_lines.empty:
         for _, line in low_performance_lines.iterrows():
             st.markdown(f"""
                 <div class="alert-card">
-                    <strong>⚠️ 주의:</strong> {line['라인번호']} 라인의 생산목표 달성률이 {line['달성률']}%로 목표(90%) 미달입니다.
+                    <strong>⚠️ 주의:</strong> {line['라인번호']} 라인의 생산목표 달성률이 {line['달성률']}%로 목표({TARGET_ACHIEVEMENT_RATE}%) 미달입니다.
                 </div>
             """, unsafe_allow_html=True)
     
@@ -434,7 +439,7 @@ def show_dashboard():
         for _, line in high_defect_lines.iterrows():
             st.markdown(f"""
                 <div class="warning-card">
-                    <strong>🚨 경고:</strong> {line['라인번호']} 라인의 불량률이 {line['불량률']}%로 임계치(0.2%)를 초과했습니다.
+                    <strong>🚨 경고:</strong> {line['라인번호']} 라인의 불량률이 {line['불량률']}%로 임계치({TARGET_DEFECT_RATE}%)를 초과했습니다.
                 </div>
             """, unsafe_allow_html=True)
     
