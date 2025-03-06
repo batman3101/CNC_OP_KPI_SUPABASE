@@ -419,7 +419,7 @@ def show_dashboard():
     
     # 문제 있는 라인 식별
     low_performance_lines = line_stats[line_stats['달성률'] < 90]
-    high_defect_lines = line_stats[line_stats['불량률'] > 5]
+    high_defect_lines = line_stats[line_stats['불량률'] > 0.2]
     
     # 알림 표시
     if not low_performance_lines.empty:
@@ -434,7 +434,7 @@ def show_dashboard():
         for _, line in high_defect_lines.iterrows():
             st.markdown(f"""
                 <div class="warning-card">
-                    <strong>🚨 경고:</strong> {line['라인번호']} 라인의 불량률이 {line['불량률']}%로 임계치(5%)를 초과했습니다.
+                    <strong>🚨 경고:</strong> {line['라인번호']} 라인의 불량률이 {line['불량률']}%로 임계치(0.2%)를 초과했습니다.
                 </div>
             """, unsafe_allow_html=True)
     
