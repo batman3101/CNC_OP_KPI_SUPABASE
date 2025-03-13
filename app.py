@@ -95,6 +95,8 @@ if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 if 'username' not in st.session_state:
     st.session_state.username = None
+if 'user_email' not in st.session_state:
+    st.session_state.user_email = None    
 if 'user_role' not in st.session_state:
     st.session_state.user_role = None
 if 'admin_accounts' not in st.session_state:
@@ -115,10 +117,12 @@ if 'db' not in st.session_state:
         st.session_state.db = SupabaseDB()  # SupabaseDB 클래스의 인스턴스 생성
         # 관리자 계정 목록 로드
         try:
-            admin_users = [user.get('이메일', '') for user in st.session_state.db.get_all_users() if user.get('권한', '') == '관리자']
-            st.session_state.admin_accounts = admin_users
+            admin_users = st.session_state.db.get_all_users()
+            admin_emails = [user.get('이메일', '').strip().lower() for user in admin_users if user.get('권한', '') == '관리자']
+            st.session_state.admin_accounts = admin_emails
+            st.write(f"로드된 관리자 계정: {st.session_state.admin_accounts}")
         except Exception as e:
-            print(f"관리자 계정 로드 중 오류 발생: {e}")
+            st.error(f"관리자 계정 로드 중 오류 발생: {e}")
 
 def verify_password(plain_password, hashed_password):
     """비밀번호 검증 함수"""
@@ -148,20 +152,28 @@ def show_login():
                 user = st.session_state.db.get_user(email)
                 
                 if user and verify_password(password, user['비밀번호']):
+                    # 사용자 정보 세션에 저장
                     st.session_state.authenticated = True
                     st.session_state.username = user['이름']
+                    st.session_state.user_email = email.strip().lower()
                     st.session_state.user_role = user['권한']
                     
-                    # 관리자 계정 목록 업데이트
+                    # 관리자 계정 목록 다시 로드 (최신 상태 유지)
                     try:
-                        admin_users = [user.get('이메일', '') for user in st.session_state.db.get_all_users() if user.get('권한', '') == '관리자']
-                        st.session_state.admin_accounts = admin_users
+                        all_users = st.session_state.db.get_all_users()
+                        admin_emails = [user.get('이메일', '').strip().lower() for user in all_users if user.get('권한', '') == '관리자']
+                        st.session_state.admin_accounts = admin_emails
+                        st.write(f"로그인 후 관리자 계정 목록: {st.session_state.admin_accounts}")
+                        st.write(f"현재 로그인 이메일: {st.session_state.user_email}")
                         
-                        # 현재 사용자가 관리자인지 확인하고 목록에 추가
-                        if user['권한'] == '관리자' and email not in st.session_state.admin_accounts:
-                            st.session_state.admin_accounts.append(email)
+                        # 관리자 권한 설정 (이메일로 확인)
+                        if st.session_state.user_email in st.session_state.admin_accounts:
+                            st.session_state.user_role = '관리자'
+                            st.write("관리자 권한이 부여되었습니다.")
+                        else:
+                            st.write("일반 사용자 권한으로 로그인합니다.")
                     except Exception as e:
-                        print(f"관리자 계정 목록 업데이트 중 오류 발생: {e}")
+                        st.error(f"관리자 계정 목록 업데이트 중 오류 발생: {e}")
                     
                     st.success(f"{user['이름']}님, 로그인 성공!")
                     st.rerun()
@@ -177,10 +189,28 @@ else:
     # 로그인 상태이면 메인 페이지 표시
     st.sidebar.title(f"안녕하세요, {st.session_state.username}님")
     
+    # 사용자 정보 디버깅 (문제 해결 후 제거 가능)
+    st.sidebar.write(f"이메일: {st.session_state.user_email}")
+    st.sidebar.write(f"권한: {st.session_state.user_role}")
+    st.sidebar.write(f"관리자 목록: {st.session_state.admin_accounts}")
+    
+    # 관리자 권한 확인 및 업데이트 (페이지 접근 시마다 확인)
+    if 'db' in st.session_state and hasattr(st.session_state, 'user_email'):
+        try:
+            all_users = st.session_state.db.get_all_users()
+            admin_emails = [user.get('이메일', '').strip().lower() for user in all_users if user.get('권한', '') == '관리자']
+            st.session_state.admin_accounts = admin_emails
+            
+            if st.session_state.user_email in st.session_state.admin_accounts:
+                st.session_state.user_role = '관리자'
+        except Exception as e:
+            st.sidebar.error(f"관리자 권한 확인 중 오류: {e}")
+    
     # 로그아웃 버튼
     if st.sidebar.button("로그아웃"):
         st.session_state.authenticated = False
         st.session_state.username = None
+        st.session_state.user_email = None
         st.session_state.user_role = None
         st.rerun()
 
