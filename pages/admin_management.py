@@ -7,9 +7,36 @@ from utils.supabase_db import SupabaseDB
 def show_admin_management():
     st.title("🔑 관리자 및 사용자 관리")
     
+    # admin_accounts 세션 상태 변수 확인 및 초기화
+    if 'admin_accounts' not in st.session_state:
+        st.session_state.admin_accounts = []
+        # DB 연결이 있으면 관리자 계정 목록 로드
+        if 'db' in st.session_state:
+            try:
+                admin_users = [user.get('이메일', '') for user in st.session_state.db.get_all_users() if user.get('권한', '') == '관리자']
+                st.session_state.admin_accounts = admin_users
+            except Exception as e:
+                st.error(f"관리자 계정 로드 중 오류 발생: {e}")
+    
     # 관리자 권한 체크
-    if not st.session_state.authenticated or st.session_state.username not in st.session_state.admin_accounts:
+    is_admin = False
+    if not st.session_state.authenticated:
+        st.error("로그인이 필요합니다.")
+        return
+    
+    # 사용자 역할로 관리자 권한 확인
+    if st.session_state.user_role == '관리자':
+        is_admin = True
+    
+    # 관리자 계정 목록으로 확인
+    elif st.session_state.username in st.session_state.admin_accounts:
+        is_admin = True
+    
+    if not is_admin:
         st.error("관리자 권한이 필요합니다.")
+        st.write(f"현재 사용자: {st.session_state.username}")
+        st.write(f"현재 권한: {st.session_state.user_role}")
+        st.write(f"관리자 계정 목록: {st.session_state.admin_accounts}")
         return
     
     # 사용자 데이터 로드
@@ -74,6 +101,10 @@ def show_admin_section():
                     )
                     
                     if success:
+                        # 관리자 계정 목록 업데이트
+                        if new_admin_id not in st.session_state.admin_accounts:
+                            st.session_state.admin_accounts.append(new_admin_id)
+                        
                         st.success("관리자가 추가되었습니다.")
                         st.rerun()
                     else:
@@ -92,6 +123,10 @@ def show_admin_section():
         else:
             success = db.delete_user(admin_to_delete)
             if success:
+                # 관리자 계정 목록에서 제거
+                if admin_to_delete in st.session_state.admin_accounts:
+                    st.session_state.admin_accounts.remove(admin_to_delete)
+                
                 st.success("관리자가 삭제되었습니다.")
                 st.rerun()
             else:
@@ -99,7 +134,26 @@ def show_admin_section():
 
 def show_user_section():
     # 사용자 관리는 관리자만 접근 가능
-    if not st.session_state.authenticated or st.session_state.username not in st.session_state.admin_accounts:
+    is_admin = False
+    
+    # admin_accounts 세션 상태 변수 확인
+    if 'admin_accounts' not in st.session_state:
+        st.session_state.admin_accounts = []
+    
+    # 로그인 확인
+    if not st.session_state.authenticated:
+        st.error("로그인이 필요합니다.")
+        return
+    
+    # 사용자 역할로 관리자 권한 확인
+    if st.session_state.user_role == '관리자':
+        is_admin = True
+    
+    # 관리자 계정 목록으로 확인
+    elif st.session_state.username in st.session_state.admin_accounts:
+        is_admin = True
+    
+    if not is_admin:
         st.error("사용자 관리는 관리자만 접근할 수 있습니다.")
         return
     

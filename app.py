@@ -97,6 +97,8 @@ if 'username' not in st.session_state:
     st.session_state.username = None
 if 'user_role' not in st.session_state:
     st.session_state.user_role = None
+if 'admin_accounts' not in st.session_state:
+    st.session_state.admin_accounts = []
 
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "dashboard"
@@ -111,6 +113,12 @@ if 'db' not in st.session_state:
         st.error("Supabase 연결 정보가 설정되어 있지 않습니다. '데이터 동기화' 메뉴에서 설정해주세요.")
     else:
         st.session_state.db = SupabaseDB()  # SupabaseDB 클래스의 인스턴스 생성
+        # 관리자 계정 목록 로드
+        try:
+            admin_users = [user.get('이메일', '') for user in st.session_state.db.get_all_users() if user.get('권한', '') == '관리자']
+            st.session_state.admin_accounts = admin_users
+        except Exception as e:
+            print(f"관리자 계정 로드 중 오류 발생: {e}")
 
 def verify_password(plain_password, hashed_password):
     """비밀번호 검증 함수"""
@@ -143,6 +151,18 @@ def show_login():
                     st.session_state.authenticated = True
                     st.session_state.username = user['이름']
                     st.session_state.user_role = user['권한']
+                    
+                    # 관리자 계정 목록 업데이트
+                    try:
+                        admin_users = [user.get('이메일', '') for user in st.session_state.db.get_all_users() if user.get('권한', '') == '관리자']
+                        st.session_state.admin_accounts = admin_users
+                        
+                        # 현재 사용자가 관리자인지 확인하고 목록에 추가
+                        if user['권한'] == '관리자' and email not in st.session_state.admin_accounts:
+                            st.session_state.admin_accounts.append(email)
+                    except Exception as e:
+                        print(f"관리자 계정 목록 업데이트 중 오류 발생: {e}")
+                    
                     st.success(f"{user['이름']}님, 로그인 성공!")
                     st.rerun()
                 else:
