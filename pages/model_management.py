@@ -8,7 +8,14 @@ from utils.supabase_db import SupabaseDB
 def load_model_data():
     try:
         # Supabase에서 모델 데이터 로드
-        db = SupabaseDB()
+        if 'db' not in st.session_state:
+            st.session_state.db = SupabaseDB()
+        
+        db = st.session_state.db
+        
+        # 캐시 무효화 먼저 수행
+        db._invalidate_cache('models')
+        
         models = db.get_all_models()
         print(f"[DEBUG] 로드된 모델 데이터: {len(models)}개")
         return models

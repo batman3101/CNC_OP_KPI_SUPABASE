@@ -63,7 +63,9 @@ with st.sidebar:
     if st.button("생산 모델 관리"):
         st.session_state.current_page = "model"
     if st.button("생산 실적 관리"):
-        st.session_state.current_page = "production"        
+        st.session_state.current_page = "production"
+    if st.button("데이터 관리"):
+        st.session_state.current_page = "data_sync"
     st.markdown('</div>', unsafe_allow_html=True)
     
     # 리포트 메뉴 그룹
@@ -113,7 +115,7 @@ if 'db' not in st.session_state:
     supabase_key = os.getenv("SUPABASE_KEY")
     
     if not supabase_url or not supabase_key:
-        st.error("Supabase 연결 정보가 설정되어 있지 않습니다. '데이터 동기화' 메뉴에서 설정해주세요.")
+        st.error("Supabase 연결 정보가 설정되어 있지 않습니다. '데이터 관리' 메뉴에서 설정해주세요.")
     else:
         st.session_state.db = SupabaseDB()  # SupabaseDB 클래스의 인스턴스 생성
         # 관리자 계정 목록 로드
@@ -123,6 +125,33 @@ if 'db' not in st.session_state:
             st.session_state.admin_accounts = admin_emails
         except Exception as e:
             st.error(f"관리자 계정 로드 중 오류 발생: {e}")
+
+# 데이터 자동 동기화 함수
+def auto_sync_data():
+    """앱 시작 시 자동으로 데이터 동기화 수행"""
+    if 'db' in st.session_state:
+        try:
+            # 작업자 데이터 동기화
+            if 'workers' not in st.session_state or not st.session_state.workers:
+                from pages.worker_management import load_worker_data
+                st.session_state.workers = load_worker_data()
+                print(f"[AUTO-SYNC] 작업자 데이터 {len(st.session_state.workers)}개 로드 완료")
+            
+            # 생산 실적 데이터 동기화
+            if 'production_data' not in st.session_state:
+                from pages.production import load_production_data
+                st.session_state.production_data = load_production_data()
+                print(f"[AUTO-SYNC] 생산 실적 데이터 {len(st.session_state.production_data)}개 로드 완료")
+            
+            # 모델 데이터 동기화
+            if 'models' not in st.session_state:
+                from pages.model_management import load_model_data
+                st.session_state.models = load_model_data()
+                print(f"[AUTO-SYNC] 모델 데이터 {len(st.session_state.models)}개 로드 완료")
+                
+            print("[AUTO-SYNC] 데이터 자동 동기화 완료")
+        except Exception as e:
+            print(f"[ERROR] 자동 데이터 동기화 중 오류 발생: {e}")
 
 def verify_password(plain_password, hashed_password):
     """비밀번호 검증 함수"""
@@ -169,6 +198,9 @@ def show_login():
                             st.session_state.user_role = '관리자'
                     except Exception as e:
                         st.error(f"관리자 계정 목록 업데이트 중 오류 발생: {e}")
+                    
+                    # 로그인 후 자동 데이터 동기화 실행
+                    auto_sync_data()
                     
                     st.success(f"{user['이름']}님, 로그인 성공!")
                     st.rerun()
@@ -232,6 +264,9 @@ else:
     elif st.session_state.current_page == "model":
         from pages.model_management import show_model_management
         show_model_management()
+    elif st.session_state.current_page == "data_sync":
+        from pages.data_sync import show_data_sync
+        show_data_sync()
 
 def main():
     pass

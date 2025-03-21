@@ -106,40 +106,83 @@ class SupabaseDB:
                 with open(self.cache_file, 'r', encoding='utf-8') as f:
                     cache_data = json.load(f)
                     self.cache = {k: (v['time'], v['data']) for k, v in cache_data.items()}
+                # 오래된 캐시 항목 자동 정리
+                self._cleanup_expired_cache()
+                print(f"[DEBUG] 캐시 로드 완료: {len(self.cache)}개 항목")
         except Exception as e:
-            print(f"캐시 로드 중 오류 발생: {e}")
+            print(f"[ERROR] 캐시 로드 중 오류 발생: {e}")
             self.cache = {}
+    
+    def _cleanup_expired_cache(self):
+        """만료된 캐시 항목 정리"""
+        current_time = time.time()
+        expired_keys = []
+        
+        for key, (cache_time, _) in self.cache.items():
+            if current_time - cache_time > self.cache_timeout:
+                expired_keys.append(key)
+        
+        for key in expired_keys:
+            del self.cache[key]
+            
+        if expired_keys:
+            print(f"[DEBUG] 만료된 캐시 {len(expired_keys)}개 항목 정리")
     
     def _save_cache(self):
         """캐시 파일 저장"""
         try:
+            # 캐시 디렉토리 생성
+            os.makedirs('cache', exist_ok=True)
+            
             cache_data = {k: {'time': v[0], 'data': v[1]} for k, v in self.cache.items()}
             with open(self.cache_file, 'w', encoding='utf-8') as f:
                 json.dump(cache_data, f, ensure_ascii=False)
+            
+            # 캐시 파일이 너무 커지면 강제로 정리
+            if os.path.getsize(self.cache_file) > 5 * 1024 * 1024:  # 5MB 이상
+                print(f"[DEBUG] 캐시 파일이 너무 큽니다. 오래된 항목 정리")
+                self._cleanup_expired_cache()
         except Exception as e:
-            print(f"캐시 저장 중 오류 발생: {e}")
+            print(f"[ERROR] 캐시 저장 중 오류 발생: {e}")
     
     def _get_cached_data(self, key):
         """캐시된 데이터 조회"""
         if key in self.cache:
             cache_time, data = self.cache[key]
             if time.time() - cache_time < self.cache_timeout:
+                print(f"[DEBUG] 캐시 히트: {key}")
                 return data
+            else:
+                # 만료된 캐시 제거
+                del self.cache[key]
+                print(f"[DEBUG] 만료된 캐시 제거: {key}")
         return None
     
     def _set_cached_data(self, key, data):
         """데이터 캐시 저장"""
         self.cache[key] = (time.time(), data)
+        print(f"[DEBUG] 캐시 저장: {key}")
         self._save_cache()
     
     def _invalidate_cache(self, key=None):
         """캐시 무효화
         key가 None이면 모든 캐시를 무효화, 아니면 특정 키의 캐시만 무효화
+        key에 prefix가 포함된 경우 해당 접두사로 시작하는 모든 캐시 항목 무효화
         """
         if key is None:
+            print(f"[DEBUG] 모든 캐시 무효화 ({len(self.cache)}개 항목)")
             self.cache = {}
         elif key in self.cache:
+            print(f"[DEBUG] 캐시 무효화: {key}")
             del self.cache[key]
+        else:
+            # 키가 접두사로 시작하는 모든 캐시 삭제
+            keys_to_delete = [k for k in self.cache.keys() if k.startswith(key)]
+            for k in keys_to_delete:
+                del self.cache[k]
+            if keys_to_delete:
+                print(f"[DEBUG] 접두사 '{key}'로 시작하는 캐시 {len(keys_to_delete)}개 무효화")
+        
         self._save_cache()
     
     # 사용자 관련 메서드
@@ -259,10 +302,11 @@ class SupabaseDB:
         try:
             print(f"[DEBUG] get_workers 시작: 캐시 확인 중")
             
-            # 캐시를 사용하지 않고 항상 최신 데이터를 가져오도록 수정
-            # cached_data = self._get_cached_data('workers')
-            # if cached_data:
-            #     return cached_data
+            # 캐시 사용 여부 (필요한 경우 캐시 사용)
+            cached_data = self._get_cached_data('workers')
+            if cached_data:
+                print(f"[DEBUG] 캐시된 작업자 데이터 {len(cached_data)}개 반환")
+                return cached_data
             
             print(f"[DEBUG] Supabase에서 작업자 데이터 직접 조회")
             if not self.client:
@@ -272,50 +316,56 @@ class SupabaseDB:
                     print(f"[ERROR] Supabase 재연결 실패")
                     return []
             
-            print(f"[DEBUG] Workers 테이블 쿼리 실행")
-            response = self.client.table('Workers').select('*').execute()
+            # 연결 재시도 (최대 3회)
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    print(f"[DEBUG] Workers 테이블 쿼리 실행 (시도 {attempt+1}/{max_retries})")
+                    response = self.client.table('Workers').select('*').execute()
+                    
+                    if hasattr(response, 'data'):
+                        workers = response.data
+                        print(f"[DEBUG] 조회된 작업자 데이터: {len(workers)}개 레코드")
+                        
+                        # 테이블 구조 확인
+                        if workers and len(workers) > 0:
+                            first_record = workers[0]
+                            print(f"[DEBUG] Workers 테이블 첫 번째 레코드: {first_record}")
+                            
+                            # 필드 매핑 설정
+                            formatted_workers = []
+                            for worker in workers:
+                                worker_data = {
+                                    'id': worker.get('id', ''),
+                                    '사번': worker.get('사번', ''),
+                                    '이름': worker.get('이름', ''),
+                                    '부서': worker.get('부서', 'CNC'),
+                                    '라인번호': worker.get('라인번호', '')
+                                }
+                                formatted_workers.append(worker_data)
+                            
+                            # 캐시 저장
+                            self._set_cached_data('workers', formatted_workers)
+                            print(f"[INFO] 작업자 데이터 {len(formatted_workers)}개 반환")
+                            return formatted_workers
+                        else:
+                            print(f"[INFO] 작업자 데이터 없음")
+                            return []
+                    else:
+                        print(f"[ERROR] 작업자 데이터 조회 응답에 data 필드가 없음 (시도 {attempt+1}/{max_retries})")
+                        if attempt < max_retries - 1:
+                            import time
+                            time.sleep(0.5)  # 잠시 대기 후 재시도
+                            self._initialize_connection()  # 연결 재초기화
+                except Exception as e:
+                    print(f"[ERROR] 작업자 조회 중 오류 발생 (시도 {attempt+1}/{max_retries}): {e}")
+                    if attempt < max_retries - 1:
+                        import time
+                        time.sleep(0.5)  # 잠시 대기 후 재시도
+                        self._initialize_connection()  # 연결 재초기화
             
-            if not hasattr(response, 'data'):
-                print(f"[ERROR] Workers 테이블 조회 응답에 데이터 필드 없음")
-                return []
-                
-            workers = response.data
-            print(f"[DEBUG] 조회된 작업자 데이터: {len(workers)}개 레코드")
-            
-            # 테이블 구조 확인
-            if workers and len(workers) > 0:
-                first_record = workers[0]
-                print(f"[DEBUG] Workers 테이블 첫 번째 레코드: {first_record}")
-                print(f"[DEBUG] Workers 테이블 필드: {list(first_record.keys())}")
-                
-                # 필드 매핑 설정
-                field_mapping = {
-                    'id': 'id',
-                    '사번': '사번',
-                    '이름': '이름',
-                    '부서': '부서',
-                    '라인번호': '라인번호'
-                }
-                
-                # 필드명 매핑
-                formatted_workers = []
-                for worker in workers:
-                    worker_data = {
-                        'id': worker.get('id', ''),
-                        '사번': worker.get('사번', ''),
-                        '이름': worker.get('이름', ''),
-                        '부서': worker.get('부서', 'CNC'),
-                        '라인번호': worker.get('라인번호', '')
-                    }
-                    formatted_workers.append(worker_data)
-                
-                # 캐시 저장
-                self._set_cached_data('workers', formatted_workers)
-                print(f"[INFO] 작업자 데이터 {len(formatted_workers)}개 반환")
-                return formatted_workers
-            else:
-                print(f"[INFO] 작업자 데이터 없음")
-                return []
+            print(f"[ERROR] 최대 재시도 횟수를 초과했습니다.")
+            return []
         except Exception as e:
             print(f"[ERROR] 작업자 조회 중 오류 발생: {e}")
             import traceback
@@ -474,25 +524,50 @@ class SupabaseDB:
         
         try:
             # 기본 쿼리 생성
-            print(f"[DEBUG] Supabase 연결 상태: URL={self.url}, 클라이언트={self.client is not None}")
+            print(f"[DEBUG] Supabase에서 생산 데이터 직접 조회")
+            if not self.client:
+                print(f"[ERROR] Supabase 클라이언트가 초기화되지 않음")
+                self._initialize_connection()
+                if not self.client:
+                    print(f"[ERROR] Supabase 재연결 실패")
+                    return []
             
             # 테이블 이름 확인 (production 또는 Production)
             table_names = ['Production', 'production']
             all_records = []
             
-            # 두 가지 테이블 이름으로 시도
-            for table_name in table_names:
+            # 연결 재시도 (최대 3회)
+            max_retries = 3
+            for attempt in range(max_retries):
                 try:
-                    query = self.client.table(table_name).select('*')
-                    print(f"[DEBUG] 쿼리 생성: 테이블={table_name}")
-                    response = query.execute()
+                    # 두 가지 테이블 이름으로 시도
+                    for table_name in table_names:
+                        try:
+                            query = self.client.table(table_name).select('*')
+                            print(f"[DEBUG] 쿼리 생성: 테이블={table_name}")
+                            response = query.execute()
+                            
+                            if response and hasattr(response, 'data') and response.data:
+                                all_records = response.data
+                                print(f"[DEBUG] 테이블 '{table_name}'에서 {len(all_records)}개 레코드 조회 성공")
+                                break
+                        except Exception as e:
+                            print(f"[DEBUG] 테이블 '{table_name}' 조회 실패: {e}")
                     
-                    if response and hasattr(response, 'data') and response.data:
-                        all_records = response.data
-                        print(f"[DEBUG] 테이블 '{table_name}'에서 {len(all_records)}개 레코드 조회 성공")
-                        break
+                    if all_records:
+                        break  # 데이터를 가져왔으므로 재시도 중단
+                    
+                    print(f"[ERROR] 생산 데이터 조회 실패 (시도 {attempt+1}/{max_retries})")
+                    if attempt < max_retries - 1:
+                        import time
+                        time.sleep(0.5)  # 잠시 대기 후 재시도
+                        self._initialize_connection()  # 연결 재초기화
                 except Exception as e:
-                    print(f"[DEBUG] 테이블 '{table_name}' 조회 실패: {e}")
+                    print(f"[ERROR] 생산 실적 조회 중 오류 발생 (시도 {attempt+1}/{max_retries}): {e}")
+                    if attempt < max_retries - 1:
+                        import time
+                        time.sleep(0.5)  # 잠시 대기 후 재시도
+                        self._initialize_connection()  # 연결 재초기화
             
             if not all_records:
                 print(f"[DEBUG] 모든 테이블 조회 시도 실패, 빈 결과 반환")
@@ -526,7 +601,6 @@ class SupabaseDB:
             
             for record in all_records:
                 record_date = record.get(date_field, '')
-                print(f"[DEBUG] 레코드 날짜: {record_date}, 타입: {type(record_date)}")
                 
                 # 날짜 형식에 따라 비교 방식 조정
                 if record_date:
@@ -718,24 +792,56 @@ class SupabaseDB:
         try:
             cached_data = self._get_cached_data('models')
             if cached_data:
+                print(f"[DEBUG] 캐시된 모델 데이터 {len(cached_data)}개 반환")
                 return cached_data
             
-            response = self.client.table('Model').select('*').execute()
-            models = response.data
+            print(f"[DEBUG] Supabase에서 모델 데이터 직접 조회")
+            if not self.client:
+                print(f"[ERROR] Supabase 클라이언트가 초기화되지 않음")
+                self._initialize_connection()
+                if not self.client:
+                    print(f"[ERROR] Supabase 재연결 실패")
+                    return []
             
-            # 필드명 매핑
-            formatted_models = []
-            for model in models:
-                formatted_models.append({
-                    'id': model.get('id', ''),
-                    '모델명': model.get('model', ''),
-                    '공정': model.get('process', '')
-                })
+            # 연결 재시도 (최대 3회)
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    print(f"[DEBUG] Model 테이블 쿼리 실행 (시도 {attempt+1}/{max_retries})")
+                    response = self.client.table('Model').select('*').execute()
+                    
+                    if hasattr(response, 'data'):
+                        models = response.data
+                        
+                        # 필드명 매핑
+                        formatted_models = []
+                        for model in models:
+                            formatted_models.append({
+                                'id': model.get('id', ''),
+                                '모델명': model.get('MODEL', model.get('model', '')),
+                                '공정': model.get('PROCESS', model.get('process', ''))
+                            })
+                        
+                        self._set_cached_data('models', formatted_models)
+                        print(f"[INFO] 모델 데이터 {len(formatted_models)}개 반환")
+                        return formatted_models
+                    else:
+                        print(f"[ERROR] 모델 데이터 조회 응답에 data 필드가 없음 (시도 {attempt+1}/{max_retries})")
+                        if attempt < max_retries - 1:
+                            import time
+                            time.sleep(0.5)  # 잠시 대기 후 재시도
+                            self._initialize_connection()  # 연결 재초기화
+                except Exception as e:
+                    print(f"[ERROR] 모델 조회 중 오류 발생 (시도 {attempt+1}/{max_retries}): {e}")
+                    if attempt < max_retries - 1:
+                        import time
+                        time.sleep(0.5)  # 잠시 대기 후 재시도
+                        self._initialize_connection()  # 연결 재초기화
             
-            self._set_cached_data('models', formatted_models)
-            return formatted_models
+            print(f"[ERROR] 최대 재시도 횟수를 초과했습니다.")
+            return []
         except Exception as e:
-            print(f"모델 조회 중 오류 발생: {e}")
+            print(f"[ERROR] 모델 조회 중 오류 발생: {e}")
             import traceback
             print(f"[DEBUG] 상세 오류: {traceback.format_exc()}")
             return []

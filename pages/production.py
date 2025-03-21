@@ -33,7 +33,13 @@ def save_production_data(data):
 def load_production_data():
     try:
         # Supabase에서 데이터 로드
-        db = SupabaseDB()
+        if 'db' not in st.session_state:
+            st.session_state.db = SupabaseDB()
+        
+        db = st.session_state.db
+        
+        # 캐시 무효화 먼저 수행
+        db._invalidate_cache()
         
         # 전체 기간의 데이터를 로드하도록 수정
         # 시작일을 충분히 과거로, 종료일을 충분히 미래로 설정
