@@ -137,39 +137,57 @@ def show_worker_management():
                 idx = worker_options[selected_worker]
                 worker = st.session_state.workers[idx]
                 
-                col1, col2 = st.columns(2)
-                
                 # 수정 폼
-                with col1:
-                    with st.form("worker_edit_form"):
-                        edit_id = st.text_input("사번", value=worker.get("사번", ""))
-                        edit_name = st.text_input("이름", value=worker.get("이름", ""))
-                        edit_dept = st.text_input("부서", value=worker.get("부서", "CNC"))
-                        edit_line = st.text_input("라인번호", value=worker.get("라인번호", ""))
+                with st.form("worker_edit_form"):
+                    edit_id = st.text_input("사번", value=worker.get("사번", ""))
+                    edit_name = st.text_input("이름", value=worker.get("이름", ""))
+                    edit_dept = st.text_input("부서", value=worker.get("부서", "CNC"))
+                    edit_line = st.text_input("라인번호", value=worker.get("라인번호", ""))
+                    
+                    # 버튼 영역을 스타일링하기 위한 CSS 추가
+                    st.markdown("""
+                    <style>
+                    .worker-edit-buttons {
+                        display: flex;
+                        gap: 10px;
+                    }
+                    .worker-save-button {
+                        flex: 3;
+                    }
+                    .worker-delete-button {
+                        flex: 1;
+                    }
+                    </style>
+                    """, unsafe_allow_html=True)
+                    
+                    # 두 개의 컬럼을 만들어 저장 버튼과 삭제 버튼을 배치
+                    col1, col2 = st.columns([3, 1])
+                    
+                    with col1:
+                        edit_button = st.form_submit_button("저장", use_container_width=True)
+                    
+                    with col2:
+                        delete_button = st.form_submit_button("삭제", type="primary", use_container_width=True)
+                    
+                    # 버튼 처리
+                    if edit_button:
+                        # 원래 이름을 저장
+                        original_name = worker.get("이름", "")
                         
-                        edit_button = st.form_submit_button("수정")
+                        # 작업자 정보 업데이트
+                        if update_worker_data(original_name, edit_name, edit_id, edit_line):
+                            st.session_state.reload_workers = True
+                            st.rerun()
+                    
+                    if delete_button:
+                        # 작업자 삭제 전 확인 메시지
+                        st.warning(f"작업자 **{worker.get('이름')}**을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")
                         
-                        if edit_button:
-                            # 원래 이름을 저장
-                            original_name = worker.get("이름", "")
-                            
-                            # 작업자 정보 업데이트
-                            if update_worker_data(original_name, edit_name, edit_id, edit_line):
-                                st.session_state.reload_workers = True
-                                st.rerun()
+                        # 작업자 삭제
+                        if delete_worker_data(worker.get("이름", "")):
+                            st.session_state.reload_workers = True
+                            st.rerun()
                 
-                # 삭제 기능
-                with col2:
-                    with st.form("worker_delete_form"):
-                        st.write(f"작업자 **{worker.get('이름')}** 삭제")
-                        st.warning("이 작업은 되돌릴 수 없습니다.")
-                        delete_button = st.form_submit_button("삭제")
-                        
-                        if delete_button:
-                            # 작업자 삭제
-                            if delete_worker_data(worker.get("이름", "")):
-                                st.session_state.reload_workers = True
-                                st.rerun()
         else:
             st.info("수정/삭제할 작업자가 없습니다.")
 
