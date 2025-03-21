@@ -20,27 +20,40 @@ def show_admin_management():
         # DB 연결이 있으면 관리자 계정 목록 로드
         if 'db' in st.session_state:
             try:
-                admin_users = [user.get('이메일', '') for user in st.session_state.db.get_all_users() if user.get('권한', '') == '관리자']
+                admin_users = [user.get('이메일', '').strip().lower() for user in st.session_state.db.get_all_users() if user.get('권한', '') == '관리자']
                 st.session_state.admin_accounts = admin_users
+                print(f"[DEBUG] 관리자 계정 목록: {admin_users}")
             except Exception as e:
                 st.error(f"관리자 계정 로드 중 오류 발생: {e}")
+                print(f"[ERROR] 관리자 계정 로드 중 오류: {e}")
     
-    # 관리자 권한 체크
-    is_admin = False
+    # 로그인 확인
     if not st.session_state.authenticated:
         st.error("로그인이 필요합니다.")
         return
     
+    # 관리자 권한 확인을 위한 로그
+    print(f"[DEBUG] 관리자 페이지 접근 시도: 사용자={st.session_state.get('username', '없음')}, 이메일={st.session_state.get('user_email', '없음')}, 권한={st.session_state.get('user_role', '없음')}")
+    print(f"[DEBUG] 지정된 admin 이메일: {ADMIN_EMAIL}")
+    
     # 관리자 권한 확인 (지정된 admin 계정은 항상 접근 허용)
-    is_admin = (st.session_state.user_role == '관리자' or 
-                st.session_state.user_email == ADMIN_EMAIL)
+    user_email = st.session_state.get('user_email', '').strip().lower()
+    admin_email = ADMIN_EMAIL.strip().lower()
+    is_admin = (st.session_state.user_role == '관리자' or user_email == admin_email)
+    
+    # 디버깅 정보 출력
+    print(f"[DEBUG] 사용자 이메일: {user_email}")
+    print(f"[DEBUG] 관리자 이메일: {admin_email}")
+    print(f"[DEBUG] 관리자 권한 확인 결과: {is_admin}")
     
     if not is_admin:
         st.error("관리자 권한이 필요합니다.")
-        st.write(f"현재 사용자: {st.session_state.username}")
+        st.write(f"현재 로그인 계정: {st.session_state.username} ({st.session_state.user_email})")
         st.write(f"현재 권한: {st.session_state.user_role}")
-        st.write(f"관리자 계정 목록: {st.session_state.admin_accounts}")
         return
+    
+    # 권한 확인 완료 로그
+    print(f"[INFO] 관리자 권한 확인 완료: 접근 허용")
     
     # 사용자 데이터 로드
     if 'user_accounts' not in st.session_state:
@@ -148,13 +161,13 @@ def show_user_section():
         st.error("로그인이 필요합니다.")
         return
     
-    # 사용자 역할로 관리자 권한 확인 (지정된 admin 계정은 항상 관리자 권한 부여)
-    if st.session_state.user_role == '관리자' or st.session_state.user_email == ADMIN_EMAIL:
-        is_admin = True
+    # 관리자 권한 확인을 위한 로그
+    print(f"[DEBUG] 사용자 관리 탭 접근: 사용자={st.session_state.get('username', '없음')}, 이메일={st.session_state.get('user_email', '없음')}, 권한={st.session_state.get('user_role', '없음')}")
     
-    # 관리자 계정 목록으로 확인
-    elif st.session_state.username in st.session_state.admin_accounts:
-        is_admin = True
+    # 사용자 역할로 관리자 권한 확인 (지정된 admin 계정은 항상 관리자 권한 부여)
+    user_email = st.session_state.get('user_email', '').strip().lower()
+    admin_email = ADMIN_EMAIL.strip().lower()
+    is_admin = (st.session_state.user_role == '관리자' or user_email == admin_email)
     
     if not is_admin:
         st.error("사용자 관리는 관리자만 접근할 수 있습니다.")

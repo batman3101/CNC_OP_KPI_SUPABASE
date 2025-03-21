@@ -34,7 +34,7 @@ class SupabaseDB:
         # 캐시 설정
         self.cache_file = 'cache/supabase_cache.json'
         self.cache = {}
-        self.cache_timeout = 60  # 캐시 유효 시간 (초) - 1분으로 단축
+        self.cache_timeout = 30  # 캐시 유효 시간 (초) - 30초로 단축
         
         # 캐시 디렉토리 생성
         os.makedirs('cache', exist_ok=True)
@@ -109,8 +109,12 @@ class SupabaseDB:
                 # 오래된 캐시 항목 자동 정리
                 self._cleanup_expired_cache()
                 print(f"[DEBUG] 캐시 로드 완료: {len(self.cache)}개 항목")
+            else:
+                print(f"[DEBUG] 캐시 파일이 존재하지 않습니다: {self.cache_file}")
         except Exception as e:
             print(f"[ERROR] 캐시 로드 중 오류 발생: {e}")
+            import traceback
+            print(f"[DEBUG] 캐시 로드 중 상세 오류: {traceback.format_exc()}")
             self.cache = {}
     
     def _cleanup_expired_cache(self):
@@ -344,30 +348,26 @@ class SupabaseDB:
                         workers = response.data
                         print(f"[DEBUG] 조회된 작업자 데이터: {len(workers)}개 레코드")
                         
-                        # 테이블 구조 확인
-                        if workers and len(workers) > 0:
-                            first_record = workers[0]
-                            print(f"[DEBUG] Workers 테이블 첫 번째 레코드: {first_record}")
-                            
-                            # 필드 매핑 설정
-                            formatted_workers = []
-                            for worker in workers:
-                                worker_data = {
-                                    'id': worker.get('id', ''),
-                                    '사번': worker.get('사번', ''),
-                                    '이름': worker.get('이름', ''),
-                                    '부서': worker.get('부서', 'CNC'),
-                                    '라인번호': worker.get('라인번호', '')
-                                }
-                                formatted_workers.append(worker_data)
-                            
-                            # 캐시 저장
-                            self._set_cached_data('workers', formatted_workers)
-                            print(f"[INFO] 작업자 데이터 {len(formatted_workers)}개 반환")
-                            return formatted_workers
-                        else:
-                            print(f"[INFO] 작업자 데이터 없음")
-                            return []
+                        # 모든 작업자 데이터 출력 (디버깅용)
+                        for i, worker in enumerate(workers):
+                            print(f"[DEBUG] 작업자 {i+1}: {worker}")
+                        
+                        # 필드 매핑 설정
+                        formatted_workers = []
+                        for worker in workers:
+                            worker_data = {
+                                'id': worker.get('id', ''),
+                                '사번': worker.get('사번', ''),
+                                '이름': worker.get('이름', ''),
+                                '부서': worker.get('부서', 'CNC'),
+                                '라인번호': worker.get('라인번호', '')
+                            }
+                            formatted_workers.append(worker_data)
+                        
+                        # 캐시 저장
+                        self._set_cached_data('workers', formatted_workers)
+                        print(f"[INFO] 작업자 데이터 {len(formatted_workers)}개 반환")
+                        return formatted_workers
                     else:
                         print(f"[ERROR] 작업자 데이터 조회 응답에 data 필드가 없음 (시도 {attempt+1}/{max_retries})")
                         if attempt < max_retries - 1:
@@ -430,6 +430,11 @@ class SupabaseDB:
                     print(f"[ERROR] Supabase 재연결 실패")
                     return False
             
+            # 캐시 무효화 먼저 수행
+            print(f"[DEBUG] 작업자 캐시 무효화")
+            self._invalidate_cache('workers')
+            self._invalidate_cache() # 전체 캐시 무효화
+            
             # Workers 테이블에서 이름으로 작업자 조회
             print(f"[DEBUG] 작업자 '{old_name}' 조회 중")
             response = self.client.table('Workers').select('*').eq('이름', old_name).execute()
@@ -454,14 +459,14 @@ class SupabaseDB:
             
             print(f"[DEBUG] 업데이트 데이터: {update_data}")
             
-            # 캐시 무효화 먼저 수행
-            print(f"[DEBUG] 작업자 캐시 무효화")
-            self._invalidate_cache('workers')
-            
             # 작업자 정보 업데이트
             print(f"[DEBUG] Workers 테이블 업데이트 시작: worker_id={worker_id}")
             update_response = self.client.table('Workers').update(update_data).eq('id', worker_id).execute()
             print(f"[DEBUG] 작업자 업데이트 응답: {update_response.data if hasattr(update_response, 'data') else '응답에 데이터 없음'}")
+            
+            # 캐시 무효화 추가로 수행
+            self._invalidate_cache('workers')
+            self._invalidate_cache()
             
             # 응답 확인
             if hasattr(update_response, 'data') and update_response.data and len(update_response.data) > 0:
@@ -490,6 +495,11 @@ class SupabaseDB:
                     print(f"[ERROR] Supabase 재연결 실패")
                     return False
             
+            # 캐시 무효화 먼저 수행
+            print(f"[DEBUG] 작업자 캐시 무효화")
+            self._invalidate_cache('workers')
+            self._invalidate_cache() # 전체 캐시 무효화
+            
             # 작업자 확인
             print(f"[DEBUG] 작업자 '{worker_name}' 조회 중")
             response = self.client.table('Workers').select('*').eq('이름', worker_name).execute()
@@ -502,14 +512,14 @@ class SupabaseDB:
             worker_id = response.data[0].get('id')
             print(f"[DEBUG] 삭제할 작업자 ID: {worker_id}")
             
-            # 캐시 무효화 먼저 수행
-            print(f"[DEBUG] 작업자 캐시 무효화")
-            self._invalidate_cache('workers')
-            
             # 작업자 삭제
             print(f"[DEBUG] Workers 테이블에서 작업자 삭제 시작: worker_id={worker_id}")
             delete_response = self.client.table('Workers').delete().eq('id', worker_id).execute()
             print(f"[DEBUG] 작업자 삭제 응답: {delete_response.data if hasattr(delete_response, 'data') else '응답에 데이터 없음'}")
+            
+            # 캐시 무효화 추가로 수행
+            self._invalidate_cache('workers')
+            self._invalidate_cache()
             
             # 응답 확인
             if hasattr(delete_response, 'data') and delete_response.data:

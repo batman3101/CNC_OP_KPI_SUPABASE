@@ -17,15 +17,28 @@ load_dotenv()
 def show_data_sync():
     st.title("📊 데이터 관리")
     
-    # 관리자 권한 확인
+    # 로그인 확인
     if 'username' not in st.session_state or st.session_state.username is None:
         st.error("로그인이 필요합니다.")
         return
     
+    # 관리자 권한 확인을 위한 로그 출력
+    print(f"[DEBUG] 데이터 관리 페이지 접근: 사용자 이메일={st.session_state.get('user_email', '없음')}, 권한={st.session_state.get('user_role', '없음')}")
+    print(f"[DEBUG] 지정된 admin 이메일: {ADMIN_EMAIL}")
+    
     # 관리자 권한 확인 (지정된 admin 계정은 항상 접근 허용)
-    if st.session_state.user_role != '관리자' and st.session_state.user_email != ADMIN_EMAIL:
+    user_email = st.session_state.get('user_email', '').strip().lower()
+    admin_email = ADMIN_EMAIL.strip().lower()
+    is_admin = (st.session_state.user_role == '관리자' or user_email == admin_email)
+    
+    if not is_admin:
         st.error("관리자 권한이 필요합니다.")
+        st.write("현재 로그인: ", st.session_state.get('username', '알 수 없음'))
+        st.write("권한: ", st.session_state.get('user_role', '알 수 없음'))
         return
+        
+    # 권한 확인 완료 로그
+    print(f"[INFO] 데이터 관리 페이지 접근 권한 확인 완료: {st.session_state.get('username', '알 수 없음')}")
     
     tab1, tab2 = st.tabs(["데이터 동기화", "Supabase 설정"])
     
