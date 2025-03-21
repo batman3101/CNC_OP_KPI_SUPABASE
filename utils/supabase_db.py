@@ -314,50 +314,65 @@ class SupabaseDB:
             print(f"[DEBUG] 상세 오류: {traceback.format_exc()}")
             return False
     
-    def update_worker(self, worker_id, data):
+    def update_worker(self, old_name, new_name, new_id, new_line):
         """작업자 정보 업데이트"""
         try:
-            # 필드 매핑 확인
-            field_mapping = {
-                '사번': '사번',
-                '이름': '이름',
-                '부서': '부서',
-                '라인번호': '라인번호'
-            }
+            # 기존 작업자 정보 조회
+            response = self.client.table('Workers').select('*').eq('이름', old_name).execute()
+            
+            if not response.data or len(response.data) == 0:
+                print(f"[ERROR] 업데이트할 작업자를 찾을 수 없음: {old_name}")
+                return False
+                
+            worker_id = response.data[0].get('id')
             
             # 업데이트 데이터 준비
-            update_data = {}
-            for k, v in data.items():
-                if k in field_mapping:
-                    update_data[field_mapping[k]] = v
+            update_data = {
+                '이름': new_name,
+                '사번': new_id,
+                '라인번호': new_line
+            }
             
-            print(f"[DEBUG] 업데이트할 작업자 데이터: {update_data}, ID: {worker_id}")
+            print(f"[DEBUG] 작업자 업데이트: ID={worker_id}, 이름={new_name}, 사번={new_id}, 라인번호={new_line}")
             
-            response = self.client.table('Workers').update(update_data).eq('id', worker_id).execute()
-            print(f"[DEBUG] 작업자 업데이트 응답: {response}")
+            # 작업자 정보 업데이트
+            update_response = self.client.table('Workers').update(update_data).eq('id', worker_id).execute()
+            print(f"[DEBUG] 작업자 업데이트 응답: {update_response}")
             
             # 캐시 무효화
             self._invalidate_cache('workers')
             
             return True
         except Exception as e:
-            print(f"작업자 업데이트 중 오류 발생: {e}")
+            print(f"[ERROR] 작업자 업데이트 중 오류 발생: {e}")
             import traceback
             print(f"[DEBUG] 상세 오류: {traceback.format_exc()}")
             return False
-    
-    def delete_worker(self, worker_id):
+            
+    def delete_worker(self, worker_name):
         """작업자 삭제"""
         try:
-            response = self.client.table('Workers').delete().eq('id', worker_id).execute()
-            print(f"[DEBUG] 작업자 삭제 응답: {response}")
+            # 작업자 확인
+            response = self.client.table('Workers').select('*').eq('이름', worker_name).execute()
+            
+            if not response.data or len(response.data) == 0:
+                print(f"[ERROR] 삭제할 작업자를 찾을 수 없음: {worker_name}")
+                return False
+                
+            worker_id = response.data[0].get('id')
+            
+            print(f"[DEBUG] 작업자 삭제: ID={worker_id}, 이름={worker_name}")
+            
+            # 작업자 삭제
+            delete_response = self.client.table('Workers').delete().eq('id', worker_id).execute()
+            print(f"[DEBUG] 작업자 삭제 응답: {delete_response}")
             
             # 캐시 무효화
             self._invalidate_cache('workers')
             
             return True
         except Exception as e:
-            print(f"작업자 삭제 중 오류 발생: {e}")
+            print(f"[ERROR] 작업자 삭제 중 오류 발생: {e}")
             import traceback
             print(f"[DEBUG] 상세 오류: {traceback.format_exc()}")
             return False

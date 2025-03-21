@@ -150,5 +150,21 @@ def show_data_edit():
                         # 작업자 데이터 다시 로드
                         st.session_state.worker_data = st.session_state.db.get_workers()
                         st.rerun()
+                
+                # 삭제 기능 추가
+                with st.form("delete_worker_form"):
+                    st.warning(f"'{selected_worker_name}' 작업자를 삭제하시겠습니까?")
+                    delete_submit = st.form_submit_button("삭제", type="primary")
+                    
+                    if delete_submit:
+                        # 데이터 삭제
+                        success = st.session_state.db.delete_worker(worker_name=selected_worker_name)
+                        if success:
+                            st.success(f"'{selected_worker_name}' 작업자가 성공적으로 삭제되었습니다.")
+                            # 작업자 데이터 다시 로드
+                            st.session_state.worker_data = st.session_state.db.get_workers()
+                            st.rerun()
+                        else:
+                            st.error(f"'{selected_worker_name}' 작업자 삭제 중 오류가 발생했습니다.")
         else:
             st.info("작업자 데이터가 없습니다.") 
