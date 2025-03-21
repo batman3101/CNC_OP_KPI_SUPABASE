@@ -90,6 +90,16 @@ with st.sidebar:
         st.session_state.current_page = "data_sync"    
     st.markdown('</div>', unsafe_allow_html=True)
 
+# 로그인 화면에 관리자 계정 목록이 표시되지 않도록 CSS 추가
+hide_admin_list = """
+<style>
+[data-testid="stText"] {
+    display: none;
+}
+</style>
+"""
+st.markdown(hide_admin_list, unsafe_allow_html=True)
+
 # 로그인 상태 초기화
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
@@ -120,7 +130,6 @@ if 'db' not in st.session_state:
             admin_users = st.session_state.db.get_all_users()
             admin_emails = [user.get('이메일', '').strip().lower() for user in admin_users if user.get('권한', '') == '관리자']
             st.session_state.admin_accounts = admin_emails
-            st.write(f"로드된 관리자 계정: {st.session_state.admin_accounts}")
         except Exception as e:
             st.error(f"관리자 계정 로드 중 오류 발생: {e}")
 
@@ -163,15 +172,10 @@ def show_login():
                         all_users = st.session_state.db.get_all_users()
                         admin_emails = [user.get('이메일', '').strip().lower() for user in all_users if user.get('권한', '') == '관리자']
                         st.session_state.admin_accounts = admin_emails
-                        st.write(f"로그인 후 관리자 계정 목록: {st.session_state.admin_accounts}")
-                        st.write(f"현재 로그인 이메일: {st.session_state.user_email}")
                         
                         # 관리자 권한 설정 (이메일로 확인)
                         if st.session_state.user_email in st.session_state.admin_accounts:
                             st.session_state.user_role = '관리자'
-                            st.write("관리자 권한이 부여되었습니다.")
-                        else:
-                            st.write("일반 사용자 권한으로 로그인합니다.")
                     except Exception as e:
                         st.error(f"관리자 계정 목록 업데이트 중 오류 발생: {e}")
                     
@@ -189,11 +193,6 @@ else:
     # 로그인 상태이면 메인 페이지 표시
     st.sidebar.title(f"안녕하세요, {st.session_state.username}님")
     
-    # 사용자 정보 디버깅 (문제 해결 후 제거 가능)
-    st.sidebar.write(f"이메일: {st.session_state.user_email}")
-    st.sidebar.write(f"권한: {st.session_state.user_role}")
-    st.sidebar.write(f"관리자 목록: {st.session_state.admin_accounts}")
-    
     # 관리자 권한 확인 및 업데이트 (페이지 접근 시마다 확인)
     if 'db' in st.session_state and hasattr(st.session_state, 'user_email'):
         try:
@@ -204,7 +203,7 @@ else:
             if st.session_state.user_email in st.session_state.admin_accounts:
                 st.session_state.user_role = '관리자'
         except Exception as e:
-            st.sidebar.error(f"관리자 권한 확인 중 오류: {e}")
+            pass
     
     # 로그아웃 버튼
     if st.sidebar.button("로그아웃"):
