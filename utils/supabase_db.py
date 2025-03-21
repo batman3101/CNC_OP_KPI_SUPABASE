@@ -317,6 +317,8 @@ class SupabaseDB:
     def update_worker(self, old_name, new_name, new_id, new_line):
         """작업자 정보 업데이트"""
         try:
+            print(f"[DEBUG] update_worker 호출: old_name={old_name}, new_name={new_name}, new_id={new_id}, new_line={new_line}")
+            
             # 기존 작업자 정보 조회
             response = self.client.table('Workers').select('*').eq('이름', old_name).execute()
             
@@ -325,15 +327,17 @@ class SupabaseDB:
                 return False
                 
             worker_id = response.data[0].get('id')
+            department = response.data[0].get('부서', 'CNC')
             
             # 업데이트 데이터 준비
             update_data = {
                 '이름': new_name,
                 '사번': new_id,
+                '부서': department,
                 '라인번호': new_line
             }
             
-            print(f"[DEBUG] 작업자 업데이트: ID={worker_id}, 이름={new_name}, 사번={new_id}, 라인번호={new_line}")
+            print(f"[DEBUG] 작업자 업데이트: ID={worker_id}, 이름={new_name}, 사번={new_id}, 부서={department}, 라인번호={new_line}")
             
             # 작업자 정보 업데이트
             update_response = self.client.table('Workers').update(update_data).eq('id', worker_id).execute()
@@ -352,6 +356,8 @@ class SupabaseDB:
     def delete_worker(self, worker_name):
         """작업자 삭제"""
         try:
+            print(f"[DEBUG] delete_worker 호출: worker_name={worker_name}")
+            
             # 작업자 확인
             response = self.client.table('Workers').select('*').eq('이름', worker_name).execute()
             
@@ -366,6 +372,15 @@ class SupabaseDB:
             # 작업자 삭제
             delete_response = self.client.table('Workers').delete().eq('id', worker_id).execute()
             print(f"[DEBUG] 작업자 삭제 응답: {delete_response}")
+            
+            # 관련 생산 기록이 있는지 확인 (선택 사항)
+            try:
+                # 모든 생산 기록에서 해당 작업자 검색
+                worker_records = self.client.table('Production').select('*').eq('작업자', worker_name).execute()
+                if worker_records.data and len(worker_records.data) > 0:
+                    print(f"[INFO] 작업자 '{worker_name}'에 연결된 {len(worker_records.data)}개의 생산 기록이 있습니다.")
+            except Exception as e:
+                print(f"[WARNING] 생산 기록 확인 중 오류 발생: {e}")
             
             # 캐시 무효화
             self._invalidate_cache('workers')

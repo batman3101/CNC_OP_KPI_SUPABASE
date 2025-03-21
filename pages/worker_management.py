@@ -125,6 +125,13 @@ def show_worker_management():
     # 수정/삭제 탭
     with tab3:
         st.subheader("작업자 정보 수정/삭제")
+        
+        # 작업자 목록 다시 로드하는 버튼 추가
+        if st.button("작업자 목록 새로고침", key="reload_worker_list"):
+            st.session_state.workers = load_worker_data()
+            st.success("작업자 목록을 새로고침했습니다.")
+            st.rerun()
+        
         if st.session_state.workers:
             # 작업자 선택
             worker_options = {f"{w.get('사번', '')} - {w.get('이름', '')}": i for i, w in enumerate(st.session_state.workers)}
@@ -137,11 +144,25 @@ def show_worker_management():
                 idx = worker_options[selected_worker]
                 worker = st.session_state.workers[idx]
                 
+                # 현재 작업자 정보 표시
+                st.write("#### 현재 작업자 정보")
+                info_col1, info_col2 = st.columns(2)
+                with info_col1:
+                    st.write(f"**사번**: {worker.get('사번', '')}")
+                    st.write(f"**이름**: {worker.get('이름', '')}")
+                with info_col2:
+                    st.write(f"**부서**: {worker.get('부서', 'CNC')}")
+                    st.write(f"**라인번호**: {worker.get('라인번호', '')}")
+                
+                st.write("---")
+                
                 # 수정 폼
                 with st.form("worker_edit_form"):
+                    st.write("#### 작업자 정보 수정")
                     edit_id = st.text_input("사번", value=worker.get("사번", ""))
                     edit_name = st.text_input("이름", value=worker.get("이름", ""))
-                    edit_dept = st.text_input("부서", value=worker.get("부서", "CNC"))
+                    edit_dept = st.text_input("부서", value=worker.get("부서", "CNC"), disabled=True, 
+                                             help="부서는 자동으로 유지됩니다.")
                     edit_line = st.text_input("라인번호", value=worker.get("라인번호", ""))
                     
                     # 버튼 영역을 스타일링하기 위한 CSS 추가
@@ -171,22 +192,44 @@ def show_worker_management():
                     
                     # 버튼 처리
                     if edit_button:
-                        # 원래 이름을 저장
-                        original_name = worker.get("이름", "")
-                        
-                        # 작업자 정보 업데이트
-                        if update_worker_data(original_name, edit_name, edit_id, edit_line):
-                            st.session_state.reload_workers = True
-                            st.rerun()
+                        # 변경 사항 확인
+                        if (edit_id == worker.get("사번", "") and 
+                            edit_name == worker.get("이름", "") and 
+                            edit_line == worker.get("라인번호", "")):
+                            st.warning("변경된 내용이 없습니다.")
+                        else:
+                            # 필수 입력 확인
+                            if not edit_id or not edit_name or not edit_line:
+                                st.error("모든 필드를 입력해주세요.")
+                            else:
+                                # 원래 이름을 저장
+                                original_name = worker.get("이름", "")
+                                
+                                # 작업자 정보 업데이트
+                                if update_worker_data(original_name, edit_name, edit_id, edit_line):
+                                    st.success(f"작업자 '{original_name}'의 정보가 업데이트되었습니다.")
+                                    st.session_state.reload_workers = True
+                                    # 2초 후 페이지 새로고침
+                                    import time
+                                    time.sleep(1)
+                                    st.rerun()
                     
                     if delete_button:
                         # 작업자 삭제 전 확인 메시지
-                        st.warning(f"작업자 **{worker.get('이름')}**을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")
+                        st.warning(f"작업자 **{worker.get('이름')}**을(를) 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")
                         
-                        # 작업자 삭제
-                        if delete_worker_data(worker.get("이름", "")):
-                            st.session_state.reload_workers = True
-                            st.rerun()
+                        # 확인을 위한 작업자 이름 입력
+                        confirm_name = st.text_input("삭제를 확인하려면 작업자 이름을 입력하세요:", key="confirm_delete")
+                        
+                        if confirm_name == worker.get("이름", ""):
+                            # 작업자 삭제
+                            if delete_worker_data(worker.get("이름", "")):
+                                st.success(f"작업자 '{worker.get('이름', '')}'이(가) 삭제되었습니다.")
+                                st.session_state.reload_workers = True
+                                # 2초 후 페이지 새로고침
+                                import time
+                                time.sleep(1)
+                                st.rerun()
                 
         else:
             st.info("수정/삭제할 작업자가 없습니다.")
