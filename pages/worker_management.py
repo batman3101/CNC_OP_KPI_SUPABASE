@@ -38,34 +38,68 @@ def save_worker_data(worker):
 
 def update_worker_data(old_name, new_name, new_id, new_line):
     try:
+        st.write(f"[DEBUG] 작업자 정보 업데이트 시도: {old_name} → {new_name}")
+        
         # Supabase에 작업자 데이터 업데이트
         db = SupabaseDB()
+        
+        # DB 연결 확인
+        if not db.client:
+            st.error("Supabase 연결이 설정되지 않았습니다. 관리자에게 문의하세요.")
+            return False
+        
+        # 캐시 무효화 먼저 진행
+        db._invalidate_cache('workers')
+            
         success = db.update_worker(old_name, new_name, new_id, new_line)
         
         if success:
-            st.success("작업자 데이터가 업데이트되었습니다.")
+            st.success(f"작업자 '{old_name}'의 정보가 '{new_name}'으로 업데이트되었습니다.")
+            # 세션 상태 갱신
+            st.session_state.reload_workers = True
         else:
-            st.error("작업자 데이터 업데이트 중 오류가 발생했습니다.")
+            st.error(f"작업자 '{old_name}' 데이터 업데이트 중 오류가 발생했습니다.")
         
         return success
     except Exception as e:
         st.error(f"데이터 업데이트 중 오류 발생: {str(e)}")
+        import traceback
+        error_details = traceback.format_exc()
+        st.error(f"상세 오류: {error_details}")
+        print(f"[ERROR] 작업자 업데이트 중 상세 오류: {error_details}")
         return False
 
 def delete_worker_data(worker_name):
     try:
+        st.write(f"[DEBUG] 작업자 삭제 시도: {worker_name}")
+        
         # Supabase에서 작업자 데이터 삭제
         db = SupabaseDB()
+        
+        # DB 연결 확인
+        if not db.client:
+            st.error("Supabase 연결이 설정되지 않았습니다. 관리자에게 문의하세요.")
+            return False
+        
+        # 캐시 무효화 먼저 진행
+        db._invalidate_cache('workers')
+            
         success = db.delete_worker(worker_name)
         
         if success:
-            st.success("작업자가 삭제되었습니다.")
+            st.success(f"작업자 '{worker_name}'이(가) 삭제되었습니다.")
+            # 세션 상태 갱신
+            st.session_state.reload_workers = True
         else:
-            st.error("작업자 삭제 중 오류가 발생했습니다.")
+            st.error(f"작업자 '{worker_name}' 삭제 중 오류가 발생했습니다.")
         
         return success
     except Exception as e:
         st.error(f"작업자 삭제 중 오류 발생: {str(e)}")
+        import traceback
+        error_details = traceback.format_exc()
+        st.error(f"상세 오류: {error_details}")
+        print(f"[ERROR] 작업자 삭제 중 상세 오류: {error_details}")
         return False
 
 def show_worker_management():
@@ -73,6 +107,13 @@ def show_worker_management():
     
     # 작업자 데이터 항상 최신으로 로드
     if 'workers' not in st.session_state or st.session_state.get('reload_workers', False):
+        # Supabase 캐시 무효화 후 데이터 로드
+        try:
+            db = SupabaseDB()
+            db._invalidate_cache('workers')
+        except Exception as e:
+            st.error(f"캐시 무효화 중 오류 발생: {str(e)}")
+        
         st.session_state.workers = load_worker_data()
         st.session_state.reload_workers = False
     
@@ -205,28 +246,42 @@ def show_worker_management():
                                 # 원래 이름을 저장
                                 original_name = worker.get("이름", "")
                                 
+                                # 캐시 무효화 먼저 진행
+                                try:
+                                    db = SupabaseDB()
+                                    db._invalidate_cache('workers')
+                                except Exception as e:
+                                    st.error(f"캐시 무효화 중 오류 발생: {str(e)}")
+                                
                                 # 작업자 정보 업데이트
                                 if update_worker_data(original_name, edit_name, edit_id, edit_line):
                                     st.success(f"작업자 '{original_name}'의 정보가 업데이트되었습니다.")
                                     st.session_state.reload_workers = True
-                                    # 2초 후 페이지 새로고침
+                                    # 1초 후 페이지 새로고침
                                     import time
                                     time.sleep(1)
                                     st.rerun()
                     
                     if delete_button:
-                        # 작업자 삭제 전 확인 메시지
+                        # 작업자 삭제 전 확인
                         st.warning(f"작업자 **{worker.get('이름')}**을(를) 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")
                         
                         # 확인을 위한 작업자 이름 입력
                         confirm_name = st.text_input("삭제를 확인하려면 작업자 이름을 입력하세요:", key="confirm_delete")
                         
                         if confirm_name == worker.get("이름", ""):
+                            # 캐시 무효화 먼저 진행
+                            try:
+                                db = SupabaseDB()
+                                db._invalidate_cache('workers')
+                            except Exception as e:
+                                st.error(f"캐시 무효화 중 오류 발생: {str(e)}")
+                                
                             # 작업자 삭제
                             if delete_worker_data(worker.get("이름", "")):
                                 st.success(f"작업자 '{worker.get('이름', '')}'이(가) 삭제되었습니다.")
                                 st.session_state.reload_workers = True
-                                # 2초 후 페이지 새로고침
+                                # 1초 후 페이지 새로고침
                                 import time
                                 time.sleep(1)
                                 st.rerun()
