@@ -356,25 +356,22 @@ class SupabaseDB:
             
             print(f"[DEBUG] 작업자 업데이트: ID={worker_id}, 이름={new_name}, 사번={new_id}, 부서={department}, 라인번호={new_line}")
             
-            # 작업자 정보 업데이트 - 직접 SQL 사용
-            try:
-                # 테이블에 직접 업데이트
-                update_response = self.client.table('Workers').update(update_data).eq('id', worker_id).execute()
-                print(f"[DEBUG] 작업자 업데이트 응답: {update_response}")
-                
-                # 응답 확인
-                if hasattr(update_response, 'data') and update_response.data:
-                    print(f"[INFO] 업데이트 성공: {update_response.data}")
-                else:
-                    print(f"[WARNING] 업데이트 응답에 데이터가 없습니다")
-            except Exception as e:
-                print(f"[ERROR] 업데이트 중 오류 발생: {e}")
-                raise e
-            
-            # 캐시 무효화
+            # 캐시 무효화를 먼저 수행
             self._invalidate_cache('workers')
             
-            return True
+            # 작업자 정보 업데이트 - 생산 관리 스타일로 수정
+            update_response = self.client.table('Workers').update(update_data).eq('id', worker_id).execute()
+            
+            print(f"[DEBUG] 작업자 업데이트 응답: {update_response}")
+            
+            # 응답 확인
+            if hasattr(update_response, 'data') and update_response.data:
+                print(f"[INFO] 업데이트 성공: {update_response.data}")
+                return True
+            else:
+                print(f"[WARNING] 업데이트 응답에 데이터가 없습니다")
+                return False
+                
         except Exception as e:
             print(f"[ERROR] 작업자 업데이트 중 오류 발생: {e}")
             import traceback
@@ -398,34 +395,22 @@ class SupabaseDB:
             
             print(f"[DEBUG] 작업자 삭제: ID={worker_id}, 이름={worker_name}, 사번={worker_num}")
             
-            # 작업자 삭제 - 직접 SQL 사용
-            try:
-                # 테이블에서 직접 삭제
-                delete_response = self.client.table('Workers').delete().eq('id', worker_id).execute()
-                print(f"[DEBUG] 작업자 삭제 응답: {delete_response}")
-                
-                # 응답 확인
-                if hasattr(delete_response, 'data') and delete_response.data:
-                    print(f"[INFO] 삭제 성공: {delete_response.data}")
-                else:
-                    print(f"[WARNING] 삭제 응답에 데이터가 없습니다")
-            except Exception as e:
-                print(f"[ERROR] 삭제 중 오류 발생: {e}")
-                raise e
-            
-            # 관련 생산 기록이 있는지 확인 (선택 사항)
-            try:
-                # 모든 생산 기록에서 해당 작업자 검색
-                worker_records = self.client.table('Production').select('*').eq('작업자', worker_name).execute()
-                if worker_records.data and len(worker_records.data) > 0:
-                    print(f"[INFO] 작업자 '{worker_name}'에 연결된 {len(worker_records.data)}개의 생산 기록이 있습니다.")
-            except Exception as e:
-                print(f"[WARNING] 생산 기록 확인 중 오류 발생: {e}")
-            
-            # 캐시 무효화
+            # 캐시 무효화를 먼저 수행
             self._invalidate_cache('workers')
             
-            return True
+            # 작업자 삭제 - 생산 관리 스타일로 수정
+            delete_response = self.client.table('Workers').delete().eq('id', worker_id).execute()
+            
+            print(f"[DEBUG] 작업자 삭제 응답: {delete_response}")
+            
+            # 응답 확인
+            if hasattr(delete_response, 'data') and delete_response.data:
+                print(f"[INFO] 삭제 성공: {delete_response.data}")
+                return True
+            else:
+                print(f"[WARNING] 삭제 응답에 데이터가 없습니다")
+                return False
+            
         except Exception as e:
             print(f"[ERROR] 작업자 삭제 중 오류 발생: {e}")
             import traceback
