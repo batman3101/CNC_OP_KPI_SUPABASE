@@ -80,13 +80,6 @@ with st.sidebar:
     if st.button("연간 리포트"):
         st.session_state.current_page = "yearly"
     st.markdown('</div>', unsafe_allow_html=True)
-    
-    # 데이터 수정 버튼만 남김
-    st.markdown('<div class="sidebar-group">', unsafe_allow_html=True)
-    st.markdown('<p class="sidebar-title">🔄 데이터 관리</p>', unsafe_allow_html=True)
-    if st.button("데이터 수정"):
-        st.session_state.current_page = "data_edit"
-    st.markdown('</div>', unsafe_allow_html=True)
 
 # 로그인 화면에 관리자 계정 목록이 표시되지 않도록 CSS 추가
 hide_admin_list = """
@@ -236,9 +229,6 @@ else:
     elif st.session_state.current_page == "yearly":
         from pages.yearly_report import show_yearly_report
         show_yearly_report()
-    elif st.session_state.current_page == "data_edit":
-        from pages.data_edit import show_data_edit
-        show_data_edit()
     elif st.session_state.current_page == "model":
         from pages.model_management import show_model_management
         show_model_management()
