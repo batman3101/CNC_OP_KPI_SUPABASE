@@ -4,9 +4,13 @@ from utils.supabase_db import SupabaseDB  # SupabaseDB 클래스를 import
 import os
 from dotenv import load_dotenv
 import bcrypt
+from utils.auth import initialize_admin
 
 # 환경 변수 로드
 load_dotenv()
+
+# 관리자 계정 초기화
+initialize_admin()
 
 # 영어 메뉴 항목 숨기기
 st.set_page_config(

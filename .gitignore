@@ -4,6 +4,7 @@ cnc-op-kpi-management-d552546430e8.json
 *.pem
 credentials.json
 client_secret.json
+config_local.py
 
 # 작업공간 설정
 CNC OP KPI.code-workspace

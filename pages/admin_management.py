@@ -3,6 +3,13 @@ import pandas as pd
 from datetime import datetime
 from utils.user_data import load_user_data, save_user_data
 from utils.supabase_db import SupabaseDB
+import bcrypt
+
+# config_local.py가 있으면 관리자 계정 정보 로드, 없으면 기본값 사용
+try:
+    from config_local import ADMIN_EMAIL
+except ImportError:
+    ADMIN_EMAIL = "admin@example.com"  # 기본값
 
 def show_admin_management():
     st.title("🔑 관리자 및 사용자 관리")
@@ -24,13 +31,9 @@ def show_admin_management():
         st.error("로그인이 필요합니다.")
         return
     
-    # 사용자 역할로 관리자 권한 확인
-    if st.session_state.user_role == '관리자':
-        is_admin = True
-    
-    # 관리자 계정 목록으로 확인
-    elif st.session_state.username in st.session_state.admin_accounts:
-        is_admin = True
+    # 관리자 권한 확인 (지정된 admin 계정은 항상 접근 허용)
+    is_admin = (st.session_state.user_role == '관리자' or 
+                st.session_state.user_email == ADMIN_EMAIL)
     
     if not is_admin:
         st.error("관리자 권한이 필요합니다.")
@@ -145,8 +148,8 @@ def show_user_section():
         st.error("로그인이 필요합니다.")
         return
     
-    # 사용자 역할로 관리자 권한 확인
-    if st.session_state.user_role == '관리자':
+    # 사용자 역할로 관리자 권한 확인 (지정된 admin 계정은 항상 관리자 권한 부여)
+    if st.session_state.user_role == '관리자' or st.session_state.user_email == ADMIN_EMAIL:
         is_admin = True
     
     # 관리자 계정 목록으로 확인

@@ -5,6 +5,12 @@ from dotenv import load_dotenv
 import pandas as pd
 import json
 
+# config_local.py가 있으면 관리자 계정 정보 로드, 없으면 기본값 사용
+try:
+    from config_local import ADMIN_EMAIL
+except ImportError:
+    ADMIN_EMAIL = "admin@example.com"  # 기본값
+
 # 환경 변수 로드
 load_dotenv()
 
@@ -16,8 +22,8 @@ def show_data_sync():
         st.error("로그인이 필요합니다.")
         return
     
-    # 관리자 권한 확인
-    if st.session_state.user_role != '관리자':
+    # 관리자 권한 확인 (지정된 admin 계정은 항상 접근 허용)
+    if st.session_state.user_role != '관리자' and st.session_state.user_email != ADMIN_EMAIL:
         st.error("관리자 권한이 필요합니다.")
         return
     

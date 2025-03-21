@@ -1,15 +1,25 @@
 import bcrypt
 from utils.supabase_db import SupabaseDB
 import streamlit as st
+import os
+
+# config_local.py가 있으면 관리자 계정 정보 로드, 없으면 기본값 사용
+try:
+    from config_local import ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_NAME
+except ImportError:
+    # 기본 관리자 계정 정보 (GitHub에 업로드됨 - 프로덕션 환경에서는 사용하지 않을 것)
+    ADMIN_EMAIL = "admin@example.com"
+    ADMIN_PASSWORD = "default_password"
+    ADMIN_NAME = "관리자"
 
 def initialize_admin():
     """
     초기 관리자 계정 설정
     """
     try:
-        admin_email = "zetooo1972@gmail.com"
-        admin_password = "admin7472"
-        admin_name = "관리자"
+        admin_email = ADMIN_EMAIL
+        admin_password = ADMIN_PASSWORD
+        admin_name = ADMIN_NAME
         
         db = SupabaseDB()
         existing_user = db.get_user(admin_email)

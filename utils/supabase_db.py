@@ -280,6 +280,23 @@ class SupabaseDB:
             print(f"[DEBUG] 상세 오류: {traceback.format_exc()}")
             return False
     
+    def update_user_password(self, email, password):
+        """사용자 비밀번호 업데이트"""
+        try:
+            data = {'비밀번호': password}
+            response = self.client.table('Users').update(data).eq('이메일', email).execute()
+            print(f"[DEBUG] 사용자 비밀번호 업데이트 응답: {response}")
+            
+            # 캐시 무효화
+            self._invalidate_cache('users')
+            
+            return True
+        except Exception as e:
+            print(f"사용자 비밀번호 업데이트 중 오류 발생: {e}")
+            import traceback
+            print(f"[DEBUG] 상세 오류: {traceback.format_exc()}")
+            return False
+    
     def delete_user(self, email):
         """사용자 삭제"""
         try:
