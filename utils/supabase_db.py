@@ -48,11 +48,16 @@ class SupabaseDB:
     def _initialize_connection(self):
         """Supabase 연결 초기화"""
         try:
+            print(f"[DEBUG] Supabase 연결 시도: URL={self.url[:10] if self.url else '없음'}..., KEY={self.key[:5] if self.key else '없음'}...")
             self.client = create_client(self.url, self.key)
+            print(f"[INFO] Supabase 연결 성공")
             # 초기 테이블 확인 및 생성
             self._ensure_tables()
         except Exception as e:
-            print(f"Supabase 연결 초기화 중 오류 발생: {e}")
+            print(f"[ERROR] Supabase 연결 초기화 중 오류 발생: {e}")
+            import traceback
+            print(f"[DEBUG] 상세 오류: {traceback.format_exc()}")
+            self.client = None
     
     def _ensure_tables(self):
         """필요한 테이블이 존재하는지 확인하고 없으면 생성"""
@@ -325,23 +330,17 @@ class SupabaseDB:
             return False
     
     def update_worker(self, old_name, new_name, new_id, new_line):
-        """작업자 정보 업데이트"""
+        """작업자 정보 업데이트 - 생산 관리 페이지와 동일한 방식으로 직접 구현"""
         try:
             print(f"[DEBUG] update_worker 호출: old_name={old_name}, new_name={new_name}, new_id={new_id}, new_line={new_line}")
             
-            # 기존 작업자 정보 조회 - 이름으로 찾기
+            # 기존 작업자 정보 조회
             response = self.client.table('Workers').select('*').eq('이름', old_name).execute()
+            print(f"[DEBUG] 작업자 조회 결과: {response.data if hasattr(response, 'data') else 'None'}")
             
             if not response.data or len(response.data) == 0:
-                print(f"[ERROR] 이름으로 업데이트할 작업자를 찾을 수 없음: {old_name}")
-                
-                # 사번으로 찾기 시도
-                response = self.client.table('Workers').select('*').eq('사번', new_id).execute()
-                if not response.data or len(response.data) == 0:
-                    print(f"[ERROR] 사번으로도 업데이트할 작업자를 찾을 수 없음: {new_id}")
-                    return False
-                    
-                print(f"[INFO] 사번으로 작업자 찾음: {new_id}")
+                print(f"[ERROR] 이름으로 작업자를 찾을 수 없음: {old_name}")
+                return False
                 
             worker_id = response.data[0].get('id')
             department = response.data[0].get('부서', 'CNC')
@@ -354,67 +353,65 @@ class SupabaseDB:
                 '라인번호': new_line
             }
             
-            print(f"[DEBUG] 작업자 업데이트: ID={worker_id}, 이름={new_name}, 사번={new_id}, 부서={department}, 라인번호={new_line}")
-            
-            # 캐시 무효화를 먼저 수행
+            # 캐시 무효화 먼저 수행
+            print(f"[DEBUG] 작업자 캐시 무효화")
             self._invalidate_cache('workers')
             
-            # 작업자 정보 업데이트 - 생산 관리 스타일로 수정
+            # 작업자 정보 업데이트 - 생산 관리와 동일한 방식
+            print(f"[DEBUG] Workers 테이블 업데이트 시작: worker_id={worker_id}")
             update_response = self.client.table('Workers').update(update_data).eq('id', worker_id).execute()
-            
-            print(f"[DEBUG] 작업자 업데이트 응답: {update_response}")
+            print(f"[DEBUG] 작업자 업데이트 응답: {update_response.data if hasattr(update_response, 'data') else 'None'}")
             
             # 응답 확인
             if hasattr(update_response, 'data') and update_response.data:
-                print(f"[INFO] 업데이트 성공: {update_response.data}")
+                print(f"[INFO] 작업자 업데이트 성공: {update_response.data}")
                 return True
             else:
-                print(f"[WARNING] 업데이트 응답에 데이터가 없습니다")
+                print(f"[WARNING] 작업자 업데이트 응답에 데이터가 없습니다")
                 return False
                 
         except Exception as e:
             print(f"[ERROR] 작업자 업데이트 중 오류 발생: {e}")
             import traceback
-            print(f"[DEBUG] 상세 오류: {traceback.format_exc()}")
+            print(f"[DEBUG] 작업자 업데이트 중 상세 오류: {traceback.format_exc()}")
             return False
             
     def delete_worker(self, worker_name):
-        """작업자 삭제"""
+        """작업자 삭제 - 생산 관리 페이지와 동일한 방식으로 직접 구현"""
         try:
             print(f"[DEBUG] delete_worker 호출: worker_name={worker_name}")
             
-            # 작업자 확인 - 이름으로 찾기
+            # 작업자 확인
             response = self.client.table('Workers').select('*').eq('이름', worker_name).execute()
+            print(f"[DEBUG] 작업자 조회 결과: {response.data if hasattr(response, 'data') else 'None'}")
             
             if not response.data or len(response.data) == 0:
                 print(f"[ERROR] 삭제할 작업자를 찾을 수 없음: {worker_name}")
                 return False
                 
             worker_id = response.data[0].get('id')
-            worker_num = response.data[0].get('사번', '')
             
-            print(f"[DEBUG] 작업자 삭제: ID={worker_id}, 이름={worker_name}, 사번={worker_num}")
-            
-            # 캐시 무효화를 먼저 수행
+            # 캐시 무효화 먼저 수행
+            print(f"[DEBUG] 작업자 캐시 무효화")
             self._invalidate_cache('workers')
             
-            # 작업자 삭제 - 생산 관리 스타일로 수정
+            # 작업자 삭제 - 생산 관리와 동일한 방식
+            print(f"[DEBUG] Workers 테이블에서 작업자 삭제 시작: worker_id={worker_id}")
             delete_response = self.client.table('Workers').delete().eq('id', worker_id).execute()
-            
-            print(f"[DEBUG] 작업자 삭제 응답: {delete_response}")
+            print(f"[DEBUG] 작업자 삭제 응답: {delete_response.data if hasattr(delete_response, 'data') else 'None'}")
             
             # 응답 확인
             if hasattr(delete_response, 'data') and delete_response.data:
-                print(f"[INFO] 삭제 성공: {delete_response.data}")
+                print(f"[INFO] 작업자 삭제 성공: {delete_response.data}")
                 return True
             else:
-                print(f"[WARNING] 삭제 응답에 데이터가 없습니다")
+                print(f"[WARNING] 작업자 삭제 응답에 데이터가 없습니다")
                 return False
             
         except Exception as e:
             print(f"[ERROR] 작업자 삭제 중 오류 발생: {e}")
             import traceback
-            print(f"[DEBUG] 상세 오류: {traceback.format_exc()}")
+            print(f"[DEBUG] 작업자 삭제 중 상세 오류: {traceback.format_exc()}")
             return False
     
     # 생산 실적 관련 메서드
