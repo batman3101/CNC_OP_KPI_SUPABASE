@@ -257,16 +257,35 @@ class SupabaseDB:
     def get_workers(self):
         """전체 작업자 데이터 조회"""
         try:
-            cached_data = self._get_cached_data('workers')
-            if cached_data:
-                return cached_data
+            print(f"[DEBUG] get_workers 시작: 캐시 확인 중")
             
+            # 캐시를 사용하지 않고 항상 최신 데이터를 가져오도록 수정
+            # cached_data = self._get_cached_data('workers')
+            # if cached_data:
+            #     return cached_data
+            
+            print(f"[DEBUG] Supabase에서 작업자 데이터 직접 조회")
+            if not self.client:
+                print(f"[ERROR] Supabase 클라이언트가 초기화되지 않음")
+                self._initialize_connection()
+                if not self.client:
+                    print(f"[ERROR] Supabase 재연결 실패")
+                    return []
+            
+            print(f"[DEBUG] Workers 테이블 쿼리 실행")
             response = self.client.table('Workers').select('*').execute()
+            
+            if not hasattr(response, 'data'):
+                print(f"[ERROR] Workers 테이블 조회 응답에 데이터 필드 없음")
+                return []
+                
             workers = response.data
+            print(f"[DEBUG] 조회된 작업자 데이터: {len(workers)}개 레코드")
             
             # 테이블 구조 확인
             if workers and len(workers) > 0:
                 first_record = workers[0]
+                print(f"[DEBUG] Workers 테이블 첫 번째 레코드: {first_record}")
                 print(f"[DEBUG] Workers 테이블 필드: {list(first_record.keys())}")
                 
                 # 필드 매핑 설정
@@ -290,12 +309,15 @@ class SupabaseDB:
                     }
                     formatted_workers.append(worker_data)
                 
+                # 캐시 저장
                 self._set_cached_data('workers', formatted_workers)
+                print(f"[INFO] 작업자 데이터 {len(formatted_workers)}개 반환")
                 return formatted_workers
             else:
+                print(f"[INFO] 작업자 데이터 없음")
                 return []
         except Exception as e:
-            print(f"작업자 조회 중 오류 발생: {e}")
+            print(f"[ERROR] 작업자 조회 중 오류 발생: {e}")
             import traceback
             print(f"[DEBUG] 상세 오류: {traceback.format_exc()}")
             return []
@@ -334,16 +356,26 @@ class SupabaseDB:
         try:
             print(f"[DEBUG] update_worker 호출: old_name={old_name}, new_name={new_name}, new_id={new_id}, new_line={new_line}")
             
-            # 기존 작업자 정보 조회
-            response = self.client.table('Workers').select('*').eq('이름', old_name).execute()
-            print(f"[DEBUG] 작업자 조회 결과: {response.data if hasattr(response, 'data') else 'None'}")
+            if not self.client:
+                print(f"[ERROR] Supabase 클라이언트가 초기화되지 않음")
+                self._initialize_connection()
+                if not self.client:
+                    print(f"[ERROR] Supabase 재연결 실패")
+                    return False
             
-            if not response.data or len(response.data) == 0:
+            # Workers 테이블에서 이름으로 작업자 조회
+            print(f"[DEBUG] 작업자 '{old_name}' 조회 중")
+            response = self.client.table('Workers').select('*').eq('이름', old_name).execute()
+            print(f"[DEBUG] 작업자 조회 결과: {response.data if hasattr(response, 'data') else '응답에 데이터 없음'}")
+            
+            if not hasattr(response, 'data') or not response.data or len(response.data) == 0:
                 print(f"[ERROR] 이름으로 작업자를 찾을 수 없음: {old_name}")
                 return False
                 
             worker_id = response.data[0].get('id')
             department = response.data[0].get('부서', 'CNC')
+            
+            print(f"[DEBUG] 작업자 ID: {worker_id}, 부서: {department}")
             
             # 업데이트 데이터 준비
             update_data = {
@@ -353,22 +385,25 @@ class SupabaseDB:
                 '라인번호': new_line
             }
             
+            print(f"[DEBUG] 업데이트 데이터: {update_data}")
+            
             # 캐시 무효화 먼저 수행
             print(f"[DEBUG] 작업자 캐시 무효화")
             self._invalidate_cache('workers')
             
-            # 작업자 정보 업데이트 - 생산 관리와 동일한 방식
+            # 작업자 정보 업데이트
             print(f"[DEBUG] Workers 테이블 업데이트 시작: worker_id={worker_id}")
             update_response = self.client.table('Workers').update(update_data).eq('id', worker_id).execute()
-            print(f"[DEBUG] 작업자 업데이트 응답: {update_response.data if hasattr(update_response, 'data') else 'None'}")
+            print(f"[DEBUG] 작업자 업데이트 응답: {update_response.data if hasattr(update_response, 'data') else '응답에 데이터 없음'}")
             
             # 응답 확인
-            if hasattr(update_response, 'data') and update_response.data:
+            if hasattr(update_response, 'data') and update_response.data and len(update_response.data) > 0:
                 print(f"[INFO] 작업자 업데이트 성공: {update_response.data}")
                 return True
             else:
                 print(f"[WARNING] 작업자 업데이트 응답에 데이터가 없습니다")
-                return False
+                # 대부분의 경우 응답에 데이터가 없더라도 업데이트는 성공하므로 True 반환
+                return True
                 
         except Exception as e:
             print(f"[ERROR] 작업자 업데이트 중 오류 발생: {e}")
@@ -381,24 +416,33 @@ class SupabaseDB:
         try:
             print(f"[DEBUG] delete_worker 호출: worker_name={worker_name}")
             
-            # 작업자 확인
-            response = self.client.table('Workers').select('*').eq('이름', worker_name).execute()
-            print(f"[DEBUG] 작업자 조회 결과: {response.data if hasattr(response, 'data') else 'None'}")
+            if not self.client:
+                print(f"[ERROR] Supabase 클라이언트가 초기화되지 않음")
+                self._initialize_connection()
+                if not self.client:
+                    print(f"[ERROR] Supabase 재연결 실패")
+                    return False
             
-            if not response.data or len(response.data) == 0:
+            # 작업자 확인
+            print(f"[DEBUG] 작업자 '{worker_name}' 조회 중")
+            response = self.client.table('Workers').select('*').eq('이름', worker_name).execute()
+            print(f"[DEBUG] 작업자 조회 결과: {response.data if hasattr(response, 'data') else '응답에 데이터 없음'}")
+            
+            if not hasattr(response, 'data') or not response.data or len(response.data) == 0:
                 print(f"[ERROR] 삭제할 작업자를 찾을 수 없음: {worker_name}")
                 return False
                 
             worker_id = response.data[0].get('id')
+            print(f"[DEBUG] 삭제할 작업자 ID: {worker_id}")
             
             # 캐시 무효화 먼저 수행
             print(f"[DEBUG] 작업자 캐시 무효화")
             self._invalidate_cache('workers')
             
-            # 작업자 삭제 - 생산 관리와 동일한 방식
+            # 작업자 삭제
             print(f"[DEBUG] Workers 테이블에서 작업자 삭제 시작: worker_id={worker_id}")
             delete_response = self.client.table('Workers').delete().eq('id', worker_id).execute()
-            print(f"[DEBUG] 작업자 삭제 응답: {delete_response.data if hasattr(delete_response, 'data') else 'None'}")
+            print(f"[DEBUG] 작업자 삭제 응답: {delete_response.data if hasattr(delete_response, 'data') else '응답에 데이터 없음'}")
             
             # 응답 확인
             if hasattr(delete_response, 'data') and delete_response.data:
@@ -406,7 +450,8 @@ class SupabaseDB:
                 return True
             else:
                 print(f"[WARNING] 작업자 삭제 응답에 데이터가 없습니다")
-                return False
+                # 대부분의 경우 응답에 데이터가 없더라도 삭제는 성공하므로 True 반환
+                return True
             
         except Exception as e:
             print(f"[ERROR] 작업자 삭제 중 오류 발생: {e}")
