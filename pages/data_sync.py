@@ -266,28 +266,27 @@ def show_data_sync():
             st.info(f"현재 API Key: {masked_key}")
             
             # 새로운 설정 입력 폼
-            with st.expander("연결 설정 변경", expanded=False):
-                with st.form("supabase_settings_form_1"):
-                    st.write("Supabase 연결 정보 설정")
-                    new_url = st.text_input("Supabase URL", value=current_url, key="supabase_url_input_1")
-                    new_key = st.text_input("Supabase API Key", value=current_key, type="password", key="supabase_key_input_1")
-                    
-                    submitted = st.form_submit_button("설정 저장", key="save_settings_btn_1")
-                    
-                    if submitted:
-                        try:
-                            # .env 파일 생성 또는 업데이트
-                            with open(".env", "w") as f:
-                                f.write(f"SUPABASE_URL={new_url}\n")
-                                f.write(f"SUPABASE_KEY={new_key}\n")
-                            
-                            # 환경 변수 다시 로드
-                            load_dotenv(override=True)
-                            
-                            st.success("Supabase 연결 설정이 저장되었습니다.")
-                            st.info("변경사항을 적용하려면 애플리케이션을 재시작해야 합니다.")
-                        except Exception as e:
-                            st.error(f"설정 저장 중 오류가 발생했습니다: {str(e)}")
+            with st.form("supabase_settings_form_1"):
+                st.write("Supabase 연결 정보 설정")
+                new_url = st.text_input("Supabase URL", value=current_url, key="supabase_url_input_1")
+                new_key = st.text_input("Supabase API Key", value=current_key, type="password", key="supabase_key_input_1")
+                
+                submitted = st.form_submit_button("설정 저장")
+                
+                if submitted:
+                    try:
+                        # .env 파일 생성 또는 업데이트
+                        with open(".env", "w") as f:
+                            f.write(f"SUPABASE_URL={new_url}\n")
+                            f.write(f"SUPABASE_KEY={new_key}\n")
+                        
+                        # 환경 변수 다시 로드
+                        load_dotenv(override=True)
+                        
+                        st.success("Supabase 연결 설정이 저장되었습니다.")
+                        st.info("변경사항을 적용하려면 애플리케이션을 재시작해야 합니다.")
+                    except Exception as e:
+                        st.error(f"설정 저장 중 오류가 발생했습니다: {str(e)}")
         else:
             st.warning("Supabase 연결 정보가 설정되어 있지 않습니다.")
             
@@ -297,7 +296,7 @@ def show_data_sync():
                 new_url = st.text_input("Supabase URL", value=current_url, key="supabase_url_input_2")
                 new_key = st.text_input("Supabase API Key", value=current_key, type="password", key="supabase_key_input_2")
                 
-                submitted = st.form_submit_button("설정 저장", key="save_settings_btn_2")
+                submitted = st.form_submit_button("설정 저장")
                 
                 if submitted:
                     try:
