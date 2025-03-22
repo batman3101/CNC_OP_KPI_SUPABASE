@@ -69,10 +69,10 @@ def show_data_sync():
                 "동기화할 데이터 선택",
                 options=["작업자 데이터", "생산 실적 데이터", "사용자 데이터", "모델 데이터"],
                 default=st.session_state.sync_options_app,
-                key="app_to_supabase_options_1"
+                key="app_to_supabase_options"
             )
             
-            if st.button("앱 -> Supabase 동기화", key="app_to_supabase_btn_1"):
+            if st.button("앱 -> Supabase 동기화", key="app_to_supabase_btn"):
                 with st.spinner("데이터를 동기화 중입니다..."):
                     sync_results = []
                     
@@ -154,10 +154,10 @@ def show_data_sync():
                 "동기화할 데이터 선택",
                 options=["작업자 데이터", "생산 실적 데이터", "사용자 데이터", "모델 데이터"],
                 default=st.session_state.sync_options_db,
-                key="supabase_to_app_options_1"
+                key="supabase_to_app_options"
             )
             
-            if st.button("Supabase -> 앱 동기화", key="supabase_to_app_btn_1"):
+            if st.button("Supabase -> 앱 동기화", key="supabase_to_app_btn"):
                 with st.spinner("데이터를 동기화 중입니다..."):
                     sync_results = []
                     
@@ -201,7 +201,7 @@ def show_data_sync():
         # 데이터 백업
         with col1:
             st.write("데이터 백업")
-            if st.button("JSON 파일로 백업", key="backup_to_json_btn_1"):
+            if st.button("JSON 파일로 백업", key="backup_to_json_btn"):
                 # 세션 상태의 데이터 수집
                 backup_data = {
                     "workers": st.session_state.get("workers", []),
@@ -219,7 +219,7 @@ def show_data_sync():
                     data=json_data,
                     file_name=f"data_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
                     mime="application/json",
-                    key="download_backup_btn_1"
+                    key="download_backup_btn"
                 )
                 
                 st.success("데이터가 성공적으로 백업되었습니다.")
@@ -227,10 +227,10 @@ def show_data_sync():
         # 데이터 복원
         with col2:
             st.write("데이터 복원")
-            uploaded_file = st.file_uploader("백업 파일 선택", type=["json"], key="backup_file_uploader_1")
+            uploaded_file = st.file_uploader("백업 파일 선택", type=["json"], key="backup_file_uploader")
             
             if uploaded_file is not None:
-                if st.button("백업 파일에서 복원", key="restore_from_backup_btn_1"):
+                if st.button("백업 파일에서 복원", key="restore_from_backup_btn"):
                     try:
                         # JSON 파일 로드
                         backup_data = json.loads(uploaded_file.getvalue().decode('utf-8'))
@@ -266,10 +266,10 @@ def show_data_sync():
             st.info(f"현재 API Key: {masked_key}")
             
             # 새로운 설정 입력 폼
-            with st.form("supabase_settings_form_1"):
+            with st.form("supabase_settings_form"):
                 st.write("Supabase 연결 정보 설정")
-                new_url = st.text_input("Supabase URL", value=current_url, key="supabase_url_input_1")
-                new_key = st.text_input("Supabase API Key", value=current_key, type="password", key="supabase_key_input_1")
+                new_url = st.text_input("Supabase URL", value=current_url, key="supabase_url_input")
+                new_key = st.text_input("Supabase API Key", value=current_key, type="password", key="supabase_key_input")
                 
                 submitted = st.form_submit_button("설정 저장")
                 
@@ -291,10 +291,10 @@ def show_data_sync():
             st.warning("Supabase 연결 정보가 설정되어 있지 않습니다.")
             
             # 새로운 설정 입력 폼
-            with st.form("supabase_settings_form_2"):
+            with st.form("supabase_settings_form_new"):
                 st.write("Supabase 연결 정보 설정")
-                new_url = st.text_input("Supabase URL", value=current_url, key="supabase_url_input_2")
-                new_key = st.text_input("Supabase API Key", value=current_key, type="password", key="supabase_key_input_2")
+                new_url = st.text_input("Supabase URL", value=current_url, key="supabase_url_input_new")
+                new_key = st.text_input("Supabase API Key", value=current_key, type="password", key="supabase_key_input_new")
                 
                 submitted = st.form_submit_button("설정 저장")
                 
@@ -352,10 +352,10 @@ def show_data_sync():
                - `MODEL`: 모델명
                - `PROCESS`: 공정
             """)
-            
-            # SQL 스크립트 제공
-            with st.expander("테이블 생성 SQL 스크립트"):
-                st.code("""
+        
+        # SQL 스크립트 제공 - 별도의 expander로 분리
+        with st.expander("테이블 생성 SQL 스크립트"):
+            st.code("""
     -- Users 테이블 생성
     CREATE TABLE Users (
       id SERIAL PRIMARY KEY,
@@ -406,5 +406,5 @@ def show_data_sync():
       updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     );
                 """, language="sql")
-                
-            st.info("위 SQL 스크립트를 Supabase의 SQL 편집기에서 실행하여 필요한 테이블을 생성할 수 있습니다.") 
+        
+        st.info("위 SQL 스크립트를 Supabase의 SQL 편집기에서 실행하여 필요한 테이블을 생성할 수 있습니다.") 
