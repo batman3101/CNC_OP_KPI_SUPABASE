@@ -1,3 +1,5 @@
+# 데이터 관리 페이지 - StreamlitDuplicateElementId 오류 수정
+# 마지막 업데이트: 2024-08-02
 import streamlit as st
 import os
 from datetime import datetime
@@ -40,6 +42,13 @@ def show_data_sync():
     # 권한 확인 완료 로그
     print(f"[INFO] 데이터 관리 페이지 접근 권한 확인 완료: {st.session_state.get('username', '알 수 없음')}")
     
+    # 세션 상태 초기화
+    if 'sync_options_app' not in st.session_state:
+        st.session_state.sync_options_app = ["작업자 데이터", "생산 실적 데이터"]
+        
+    if 'sync_options_db' not in st.session_state:
+        st.session_state.sync_options_db = ["작업자 데이터", "생산 실적 데이터"]
+    
     tab1, tab2 = st.tabs(["데이터 동기화", "Supabase 설정"])
     
     # 데이터 동기화 탭
@@ -56,10 +65,10 @@ def show_data_sync():
             st.write("앱의 데이터를 Supabase 데이터베이스로 내보냅니다.")
             
             # 동기화 대상 선택
-            sync_options = st.multiselect(
+            st.session_state.sync_options_app = st.multiselect(
                 "동기화할 데이터 선택",
                 options=["작업자 데이터", "생산 실적 데이터", "사용자 데이터", "모델 데이터"],
-                default=["작업자 데이터", "생산 실적 데이터"],
+                default=st.session_state.sync_options_app,
                 key="app_to_supabase_options_1"
             )
             
@@ -71,7 +80,7 @@ def show_data_sync():
                         db = st.session_state.db
                         
                         # 작업자 데이터 동기화
-                        if "작업자 데이터" in sync_options:
+                        if "작업자 데이터" in st.session_state.sync_options_app:
                             if 'workers' in st.session_state and st.session_state.workers:
                                 for worker in st.session_state.workers:
                                     db.add_worker(
@@ -85,7 +94,7 @@ def show_data_sync():
                                 sync_results.append("⚠️ 동기화할 작업자 데이터가 없습니다")
                         
                         # 생산 실적 데이터 동기화
-                        if "생산 실적 데이터" in sync_options:
+                        if "생산 실적 데이터" in st.session_state.sync_options_app:
                             if 'production_data' in st.session_state and st.session_state.production_data:
                                 for record in st.session_state.production_data:
                                     db.add_production_record(
@@ -103,7 +112,7 @@ def show_data_sync():
                                 sync_results.append("⚠️ 동기화할 생산 실적 데이터가 없습니다")
                         
                         # 사용자 데이터 동기화
-                        if "사용자 데이터" in sync_options:
+                        if "사용자 데이터" in st.session_state.sync_options_app:
                             if 'users' in st.session_state and st.session_state.users:
                                 for user in st.session_state.users:
                                     db.add_user(
@@ -117,7 +126,7 @@ def show_data_sync():
                                 sync_results.append("⚠️ 동기화할 사용자 데이터가 없습니다")
                         
                         # 모델 데이터 동기화
-                        if "모델 데이터" in sync_options:
+                        if "모델 데이터" in st.session_state.sync_options_app:
                             if 'models' in st.session_state and st.session_state.models:
                                 for model in st.session_state.models:
                                     db.add_model(
@@ -141,10 +150,10 @@ def show_data_sync():
             st.write("Supabase 데이터베이스의 데이터를 앱으로 가져옵니다.")
             
             # 동기화 대상 선택
-            sync_options_db = st.multiselect(
+            st.session_state.sync_options_db = st.multiselect(
                 "동기화할 데이터 선택",
                 options=["작업자 데이터", "생산 실적 데이터", "사용자 데이터", "모델 데이터"],
-                default=["작업자 데이터", "생산 실적 데이터"],
+                default=st.session_state.sync_options_db,
                 key="supabase_to_app_options_1"
             )
             
@@ -156,24 +165,24 @@ def show_data_sync():
                         db = st.session_state.db
                         
                         # 작업자 데이터 가져오기
-                        if "작업자 데이터" in sync_options_db:
+                        if "작업자 데이터" in st.session_state.sync_options_db:
                             from pages.worker_management import load_worker_data
                             st.session_state.workers = load_worker_data()
                             sync_results.append(f"✅ 작업자 데이터 {len(st.session_state.workers)}개 로드 완료")
                         
                         # 생산 실적 데이터 가져오기
-                        if "생산 실적 데이터" in sync_options_db:
+                        if "생산 실적 데이터" in st.session_state.sync_options_db:
                             from pages.production import load_production_data
                             st.session_state.production_data = load_production_data()
                             sync_results.append(f"✅ 생산 실적 데이터 {len(st.session_state.production_data)}개 로드 완료")
                         
                         # 사용자 데이터 가져오기
-                        if "사용자 데이터" in sync_options_db:
+                        if "사용자 데이터" in st.session_state.sync_options_db:
                             st.session_state.users = db.get_all_users()
                             sync_results.append(f"✅ 사용자 데이터 {len(st.session_state.users)}개 로드 완료")
                         
                         # 모델 데이터 가져오기
-                        if "모델 데이터" in sync_options_db:
+                        if "모델 데이터" in st.session_state.sync_options_db:
                             from pages.model_management import load_model_data
                             st.session_state.models = load_model_data()
                             sync_results.append(f"✅ 모델 데이터 {len(st.session_state.models)}개 로드 완료")
