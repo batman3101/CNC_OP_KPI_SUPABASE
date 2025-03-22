@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 import bcrypt
 from utils.auth import initialize_admin
 from utils.sidebar import show_sidebar
-from utils.login import login, logout
+from utils.login import login, logout, verify_password
 
 # 캐시 초기화 - 앱 시작 시 데이터 갱신을 보장
 st.cache_data.clear()
@@ -163,65 +163,13 @@ def auto_sync_data():
         except Exception as e:
             print(f"[ERROR] 자동 데이터 동기화 중 오류 발생: {e}")
 
-def verify_password(plain_password, hashed_password):
-    """비밀번호 검증 함수"""
-    try:
-        # 해시된 비밀번호가 bcrypt 형식인지 확인
-        if hashed_password.startswith('$2'):
-            # bcrypt 해시 검증
-            return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
-        else:
-            # 일반 텍스트 비밀번호 비교 (개발 환경용)
-            return plain_password == hashed_password
-    except Exception as e:
-        print(f"비밀번호 검증 중 오류 발생: {e}")
-        return False
-
-def show_login():
-    st.title("로그인")
-    
-    with st.form("login_form"):
-        email = st.text_input("이메일", key="login_email")
-        password = st.text_input("비밀번호", type="password", key="login_password")
-        submitted = st.form_submit_button("로그인", key="login_submit")
-        
-        if submitted:
-            if 'db' in st.session_state:
-                # Supabase에서 사용자 정보 조회
-                user = st.session_state.db.get_user(email)
-                
-                if user and verify_password(password, user['비밀번호']):
-                    # 사용자 정보 세션에 저장
-                    st.session_state.authenticated = True
-                    st.session_state.username = user['이름']
-                    st.session_state.user_email = email.strip().lower()
-                    st.session_state.user_role = user['권한']
-                    
-                    # 관리자 계정 목록 다시 로드 (최신 상태 유지)
-                    try:
-                        all_users = st.session_state.db.get_all_users()
-                        admin_emails = [user.get('이메일', '').strip().lower() for user in all_users if user.get('권한', '') == '관리자']
-                        st.session_state.admin_accounts = admin_emails
-                        
-                        # 관리자 권한 설정 (이메일로 확인)
-                        if st.session_state.user_email in st.session_state.admin_accounts:
-                            st.session_state.user_role = '관리자'
-                    except Exception as e:
-                        st.error(f"관리자 계정 목록 업데이트 중 오류 발생: {e}")
-                    
-                    # 로그인 후 자동 데이터 동기화 실행
-                    auto_sync_data()
-                    
-                    st.success(f"{user['이름']}님, 로그인 성공!")
-                    st.rerun()
-                else:
-                    st.error("이메일 또는 비밀번호가 올바르지 않습니다.")
-            else:
-                st.error("데이터베이스 연결이 설정되어 있지 않습니다.")
-
 # 로그인 상태가 아니면 로그인 페이지 표시
 if not st.session_state.authenticated:
-    show_login()
+    user = login()
+    if user:
+        # 로그인 성공 시 자동 데이터 동기화 실행
+        auto_sync_data()
+        st.rerun()
 else:
     # 로그인 상태이면 메인 페이지 표시
     st.sidebar.title(f"안녕하세요, {st.session_state.username}님")
@@ -240,10 +188,7 @@ else:
     
     # 로그아웃 버튼
     if st.sidebar.button("로그아웃", key="logout_btn"):
-        st.session_state.authenticated = False
-        st.session_state.username = None
-        st.session_state.user_email = None
-        st.session_state.user_role = None
+        logout()
         st.rerun()
 
     # 페이지 라우팅
