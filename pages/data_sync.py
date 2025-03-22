@@ -354,7 +354,7 @@ def show_data_sync():
             """)
             
             # SQL 스크립트 제공
-            with st.expander("테이블 생성 SQL 스크립트", key="table_sql_expander_1"):
+            with st.expander("테이블 생성 SQL 스크립트"):
                 st.code("""
     -- Users 테이블 생성
     CREATE TABLE Users (
