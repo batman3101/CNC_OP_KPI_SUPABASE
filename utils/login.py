@@ -11,10 +11,10 @@ def login() -> Optional[dict]:
     """
     st.title("로그인")
     
-    with st.form("login_form"):
-        email = st.text_input("이메일", key="login_email_form")
-        password = st.text_input("비밀번호", type="password", key="login_password_form")
-        submitted = st.form_submit_button("로그인", key="login_submit_form")
+    with st.form(key="login_form"):
+        email = st.text_input("이메일", key="login_email_input")
+        password = st.text_input("비밀번호", type="password", key="login_password_input")
+        submitted = st.form_submit_button("로그인")
         
         if submitted:
             if 'db' in st.session_state:
