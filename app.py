@@ -5,6 +5,12 @@ import os
 from dotenv import load_dotenv
 import bcrypt
 from utils.auth import initialize_admin
+from utils.sidebar import show_sidebar
+from utils.login import login, logout
+
+# 캐시 초기화 - 앱 시작 시 데이터 갱신을 보장
+st.cache_data.clear()
+st.cache_resource.clear()
 
 # 환경 변수 로드
 load_dotenv()
@@ -60,30 +66,30 @@ with st.sidebar:
     # 관리자 메뉴 그룹
     st.markdown('<div class="sidebar-group">', unsafe_allow_html=True)
     st.markdown('<p class="sidebar-title">👥 관리자 메뉴</p>', unsafe_allow_html=True)
-    if st.button("관리자 및 사용자 관리"):
+    if st.button("관리자 및 사용자 관리", key="admin_user_btn"):
         st.session_state.current_page = "admin_user"
-    if st.button("작업자 등록 및 관리"):
+    if st.button("작업자 등록 및 관리", key="worker_btn"):
         st.session_state.current_page = "worker"
-    if st.button("생산 모델 관리"):
+    if st.button("생산 모델 관리", key="model_btn"):
         st.session_state.current_page = "model"
-    if st.button("생산 실적 관리"):
+    if st.button("생산 실적 관리", key="production_btn"):
         st.session_state.current_page = "production"
-    if st.button("데이터 관리"):
+    if st.button("데이터 관리", key="data_sync_btn"):
         st.session_state.current_page = "data_sync"
     st.markdown('</div>', unsafe_allow_html=True)
     
     # 리포트 메뉴 그룹
     st.markdown('<div class="sidebar-group">', unsafe_allow_html=True)
     st.markdown('<p class="sidebar-title">📊 리포트 메뉴</p>', unsafe_allow_html=True)
-    if st.button("종합 대시보드"):
+    if st.button("종합 대시보드", key="dashboard_btn"):
         st.session_state.current_page = "dashboard"
-    if st.button("일간 리포트"):
+    if st.button("일간 리포트", key="daily_btn"):
         st.session_state.current_page = "daily"
-    if st.button("주간 리포트"):
+    if st.button("주간 리포트", key="weekly_btn"):
         st.session_state.current_page = "weekly"
-    if st.button("월간 리포트"):
+    if st.button("월간 리포트", key="monthly_btn"):
         st.session_state.current_page = "monthly"
-    if st.button("연간 리포트"):
+    if st.button("연간 리포트", key="yearly_btn"):
         st.session_state.current_page = "yearly"
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -175,9 +181,9 @@ def show_login():
     st.title("로그인")
     
     with st.form("login_form"):
-        email = st.text_input("이메일")
-        password = st.text_input("비밀번호", type="password")
-        submitted = st.form_submit_button("로그인")
+        email = st.text_input("이메일", key="login_email")
+        password = st.text_input("비밀번호", type="password", key="login_password")
+        submitted = st.form_submit_button("로그인", key="login_submit")
         
         if submitted:
             if 'db' in st.session_state:
@@ -233,7 +239,7 @@ else:
             pass
     
     # 로그아웃 버튼
-    if st.sidebar.button("로그아웃"):
+    if st.sidebar.button("로그아웃", key="logout_btn"):
         st.session_state.authenticated = False
         st.session_state.username = None
         st.session_state.user_email = None
@@ -272,8 +278,6 @@ else:
         from pages.data_sync import show_data_sync
         show_data_sync()
 
-def main():
-    pass
-
+# 앱 실행
 if __name__ == "__main__":
-    main() 
+    pass  # 메인 로직은 위에서 이미 실행됨 
