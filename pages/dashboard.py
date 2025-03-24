@@ -169,23 +169,41 @@ def show_dashboard():
         
         # 날짜 범위 계산
         today = datetime.now().date()
+        
         if selected_period == "일간":
-            start_date = today
-            end_date = today
-            date_title = today.strftime("%Y년 %m월 %d일")
+            # 일간 선택 시 날짜 선택 가능
+            selected_date = st.date_input("조회할 날짜", today)
+            start_date = selected_date
+            end_date = selected_date
+            date_title = selected_date.strftime("%Y년 %m월 %d일")
         elif selected_period == "주간":
-            start_date = today - timedelta(days=today.weekday())
+            # 주간 선택 시 시작 날짜 선택 가능
+            # 선택한 날짜가 속한 주의 월요일 계산
+            default_monday = today - timedelta(days=today.weekday())
+            selected_start_date = st.date_input("조회할 주의 시작일(월요일)", default_monday)
+            # 선택한 날짜의 요일을 확인하고 해당 주의 월요일로 조정
+            adjusted_start = selected_start_date - timedelta(days=selected_start_date.weekday())
+            start_date = adjusted_start
             end_date = start_date + timedelta(days=6)
             date_title = f"{start_date.strftime('%Y년 %m월 %d일')} ~ {end_date.strftime('%Y년 %m월 %d일')}"
         elif selected_period == "월간":
-            start_date = today.replace(day=1)
-            next_month = today.replace(day=28) + timedelta(days=4)
-            end_date = next_month.replace(day=1) - timedelta(days=1)
-            date_title = today.strftime("%Y년 %m월")
+            # 월간 선택 시 년월 선택
+            selected_month = st.date_input("조회할 월", today.replace(day=1))
+            start_date = selected_month.replace(day=1)
+            # 다음 달의 1일 - 1일 = 해당 월의 마지막 날
+            if selected_month.month == 12:
+                next_month = selected_month.replace(year=selected_month.year+1, month=1, day=1)
+            else:
+                next_month = selected_month.replace(month=selected_month.month+1, day=1)
+            end_date = next_month - timedelta(days=1)
+            date_title = selected_month.strftime("%Y년 %m월")
         else:  # 연간
-            start_date = today.replace(month=1, day=1)
-            end_date = today.replace(month=12, day=31)
-            date_title = today.strftime("%Y년")
+            # 연간 선택 시 년도 선택
+            year_options = list(range(datetime.now().year, datetime.now().year - 5, -1))
+            selected_year = st.selectbox("조회할 연도", year_options)
+            start_date = datetime(selected_year, 1, 1).date()
+            end_date = datetime(selected_year, 12, 31).date()
+            date_title = f"{selected_year}년"
         
         # 라인 선택
         line_options = ["전체", "B-01", "B-02", "B-03", "B-04", "B-05", "B-06"]
