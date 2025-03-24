@@ -128,6 +128,11 @@ def show_yearly_report():
         line_stats['불량률'] = round((line_stats['불량수량'] / line_stats['생산수량']) * 100, 1)
         line_stats['작업효율'] = round(((line_stats['생산수량'] - line_stats['불량수량']) / line_stats['목표수량']) * 100, 1)
         
+        # KPI 컬럼에 % 기호 추가
+        line_stats['생산목표달성률'] = line_stats['생산목표달성률'].apply(lambda x: f'{x}%')
+        line_stats['불량률'] = line_stats['불량률'].apply(lambda x: f'{x}%')
+        line_stats['작업효율'] = line_stats['작업효율'].apply(lambda x: f'{x}%')
+        
         # 테이블 표시
         st.dataframe(
             line_stats[['라인번호', '목표수량', '생산수량', '불량수량', '생산목표달성률', '불량률', '작업효율']],
