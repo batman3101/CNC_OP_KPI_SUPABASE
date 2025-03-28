@@ -103,7 +103,7 @@ def show_worker_performance(records):
     st.plotly_chart(fig, use_container_width=True)
 
 def show_dashboard():
-    st.title("CNC 생산 종합 대시보드")
+    st.title("📈 CNC 생산 종합 대시보드")
     
     # CSS 스타일 추가
     st.markdown("""

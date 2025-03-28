@@ -66,30 +66,30 @@ with st.sidebar:
     # 관리자 메뉴 그룹
     st.markdown('<div class="sidebar-group">', unsafe_allow_html=True)
     st.markdown('<p class="sidebar-title">👥 관리자 메뉴</p>', unsafe_allow_html=True)
-    if st.button("관리자 및 사용자 관리", key="admin_user_btn"):
+    if st.button("🔑 관리자 및 사용자 관리", key="admin_user_btn"):
         st.session_state.current_page = "admin_user"
-    if st.button("작업자 등록 및 관리", key="worker_btn"):
+    if st.button("👨‍🏭 작업자 등록 및 관리", key="worker_btn"):
         st.session_state.current_page = "worker"
-    if st.button("생산 모델 관리", key="model_btn"):
+    if st.button("📦 생산 모델 관리", key="model_btn"):
         st.session_state.current_page = "model"
-    if st.button("생산 실적 관리", key="production_btn"):
+    if st.button("📋 생산 실적 관리", key="production_btn"):
         st.session_state.current_page = "production"
-    if st.button("데이터 관리", key="data_sync_btn"):
+    if st.button("💾 데이터 관리", key="data_sync_btn"):
         st.session_state.current_page = "data_sync"
     st.markdown('</div>', unsafe_allow_html=True)
     
     # 리포트 메뉴 그룹
     st.markdown('<div class="sidebar-group">', unsafe_allow_html=True)
     st.markdown('<p class="sidebar-title">📊 리포트 메뉴</p>', unsafe_allow_html=True)
-    if st.button("종합 대시보드", key="dashboard_btn"):
+    if st.button("📈 종합 대시보드", key="dashboard_btn"):
         st.session_state.current_page = "dashboard"
-    if st.button("일간 리포트", key="daily_btn"):
+    if st.button("📅 일간 리포트", key="daily_btn"):
         st.session_state.current_page = "daily"
-    if st.button("주간 리포트", key="weekly_btn"):
+    if st.button("📆 주간 리포트", key="weekly_btn"):
         st.session_state.current_page = "weekly"
-    if st.button("월간 리포트", key="monthly_btn"):
+    if st.button("📊 월간 리포트", key="monthly_btn"):
         st.session_state.current_page = "monthly"
-    if st.button("연간 리포트", key="yearly_btn"):
+    if st.button("📅 연간 리포트", key="yearly_btn"):
         st.session_state.current_page = "yearly"
     st.markdown('</div>', unsafe_allow_html=True)
 

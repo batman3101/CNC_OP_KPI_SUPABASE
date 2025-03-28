@@ -17,7 +17,7 @@ except ImportError:
 load_dotenv()
 
 def show_data_sync():
-    st.title("📊 데이터 관리")
+    st.title("💾 데이터 관리")
     
     # 로그인 확인
     if 'username' not in st.session_state or st.session_state.username is None:
