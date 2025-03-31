@@ -570,8 +570,8 @@ class SupabaseDB:
                     # 두 가지 테이블 이름으로 시도
                     for table_name in table_names:
                         try:
-                            query = self.client.table(table_name).select('*')
-                            print(f"[DEBUG] 쿼리 생성: 테이블={table_name}")
+                            query = self.client.table(table_name).select('*').limit(10000)  # 최대 10000개 레코드 조회로 수정
+                            print(f"[DEBUG] 쿼리 생성: 테이블={table_name}, limit=10000")
                             response = query.execute()
                             
                             if response and hasattr(response, 'data') and response.data:
