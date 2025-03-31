@@ -214,7 +214,7 @@ def show_production_management():
                     filtered_df = filtered_df[filtered_df['라인번호'] == selected_line]
                 
                 # 데이터 표시 - 인덱스 숨김
-                st.dataframe(filtered_df, use_container_width=True, hide_index=True, max_rows=None)
+                st.dataframe(filtered_df, use_container_width=True, hide_index=True)
                 st.write(f"필터링된 데이터: {len(filtered_df)}개 행")
                 
                 # 수정 기능
@@ -303,8 +303,8 @@ def show_production_management():
         
         if st.session_state.production_data:
             df = pd.DataFrame(st.session_state.production_data)
-            # 모든 행을 표시하기 위해 max_rows=None 추가
-            st.dataframe(df, hide_index=True, max_rows=None, use_container_width=True)
+            # max_rows 매개변수는 지원되지 않으므로 제거
+            st.dataframe(df, hide_index=True, use_container_width=True)
             st.write(f"총 {len(df)}개의 생산 실적 데이터가 로드되었습니다.")
         else:
             st.info("등록된 생산 실적이 없습니다.")
