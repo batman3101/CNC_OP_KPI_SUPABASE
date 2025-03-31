@@ -172,14 +172,54 @@ def show_data_sync():
                         
                         # 생산 실적 데이터 가져오기
                         if "생산 실적 데이터" in st.session_state.sync_options_db:
-                            from pages.production import load_production_data
-                            st.session_state.production_data = load_production_data()
-                            record_count = len(st.session_state.production_data)
-                            
-                            if record_count >= 10000:
-                                sync_results.append(f"✅ 생산 실적 데이터 {record_count}개 로드 완료 (최대 조회 제한: 10000개)")
-                            else:
-                                sync_results.append(f"✅ 생산 실적 데이터 {record_count}개 로드 완료")
+                            with st.spinner("생산 실적 데이터 동기화 중... (대용량 데이터는 시간이 걸릴 수 있습니다)"):
+                                try:
+                                    # 직접 페이지네이션을 통해 모든 데이터 가져오기
+                                    page_size = 1000
+                                    offset = 0
+                                    all_records = []
+                                    
+                                    # 먼저 캐시 무효화
+                                    db._invalidate_cache()
+                                    
+                                    # 페이지네이션으로 모든 데이터 가져오기
+                                    while True:
+                                        print(f"[DEBUG] 생산 데이터 페이지 로드 중: offset={offset}, limit={page_size}")
+                                        response = db.client.table('Production').select('*').limit(page_size).offset(offset).execute()
+                                        records = response.data
+                                        
+                                        if not records:
+                                            break
+                                            
+                                        all_records.extend(records)
+                                        record_count = len(all_records)
+                                        print(f"[DEBUG] 현재까지 로드된 생산 데이터: {record_count}개")
+                                        
+                                        if len(records) < page_size:
+                                            break
+                                            
+                                        offset += page_size
+                                    
+                                    # 전체 데이터를 세션 상태에 저장
+                                    st.session_state.production_data = all_records
+                                    record_count = len(all_records)
+                                    
+                                    # production.py의 load_production_data 함수 대신 직접 구현
+                                    sync_results.append(f"✅ 생산 실적 데이터 {record_count}개 로드 완료 (페이지네이션 사용)")
+                                except Exception as e:
+                                    import traceback
+                                    print(f"[ERROR] 생산 데이터 페이지네이션 중 오류: {str(e)}")
+                                    print(traceback.format_exc())
+                                    
+                                    # 오류 발생 시 기존 방식으로 시도
+                                    from pages.production import load_production_data
+                                    st.session_state.production_data = load_production_data()
+                                    record_count = len(st.session_state.production_data)
+                                    
+                                    if record_count >= 10000:
+                                        sync_results.append(f"✅ 생산 실적 데이터 {record_count}개 로드 완료 (최대 조회 제한: 10000개)")
+                                    else:
+                                        sync_results.append(f"✅ 생산 실적 데이터 {record_count}개 로드 완료")
                         
                         # 사용자 데이터 가져오기
                         if "사용자 데이터" in st.session_state.sync_options_db:
