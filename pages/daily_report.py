@@ -59,8 +59,10 @@ def show_daily_report():
             st.dataframe(
                 df[display_columns],
                 use_container_width=True,
-                hide_index=True
+                hide_index=True,
+                max_rows=None
             )
+            st.write(f"총 {len(df)}개 데이터 표시 중")
         
         # 통계 계산 시에도 특이사항 제외
         if not df.empty:
