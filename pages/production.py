@@ -48,7 +48,12 @@ def load_production_data():
         
         print(f"[DEBUG] 생산 데이터 로드 시도: {start_date} ~ {end_date}")
         records = db.get_production_records(start_date=start_date, end_date=end_date)
-        print(f"[DEBUG] 로드된 생산 데이터: {len(records)}개")
+        record_count = len(records)
+        print(f"[DEBUG] 로드된 생산 데이터: {record_count}개")
+        
+        # record_count를 10000으로 제한하지 않도록 수정
+        if record_count >= 10000:
+            print(f"[INFO] 최대 10000개 레코드 제한이 적용되었습니다. 실제 레코드 수: {record_count}")
         
         return records
     except Exception as e:

@@ -174,7 +174,12 @@ def show_data_sync():
                         if "생산 실적 데이터" in st.session_state.sync_options_db:
                             from pages.production import load_production_data
                             st.session_state.production_data = load_production_data()
-                            sync_results.append(f"✅ 생산 실적 데이터 {len(st.session_state.production_data)}개 로드 완료")
+                            record_count = len(st.session_state.production_data)
+                            
+                            if record_count >= 10000:
+                                sync_results.append(f"✅ 생산 실적 데이터 {record_count}개 로드 완료 (최대 조회 제한: 10000개)")
+                            else:
+                                sync_results.append(f"✅ 생산 실적 데이터 {record_count}개 로드 완료")
                         
                         # 사용자 데이터 가져오기
                         if "사용자 데이터" in st.session_state.sync_options_db:
