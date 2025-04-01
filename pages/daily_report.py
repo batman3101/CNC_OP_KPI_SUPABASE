@@ -349,4 +349,83 @@ def display_data_grid(df, title="데이터 테이블"):
             height=400
         )
     except Exception as e:
-        st.error(f"데이터 그리드 표시 중 오류가 발생했습니다: {str(e)}") 
+        st.error(f"데이터 그리드 표시 중 오류가 발생했습니다: {str(e)}")
+
+# 일간 보고서 페이지
+def show():
+    st.title("일간 생산 보고서")
+    
+    try:
+        # 데이터 로드 (최신 상태 유지)
+        if 'production_data' not in st.session_state or st.session_state.production_data is None:
+            st.session_state.production_data = load_production_data()
+        
+        # 날짜 선택 기능
+        st.markdown("### 📅 날짜 선택")
+        with st.form("일간_보고서_날짜_선택"):
+            selected_date = st.date_input("보고서 날짜", datetime.now().date())
+            submit_date = st.form_submit_button("해당 날짜 보고서 확인", use_container_width=True)
+        
+        # 필터링된 데이터 확인
+        records = st.session_state.production_data or []
+        if not records:
+            st.warning("생산 데이터가 없습니다.")
+            return
+            
+        # 선택된 날짜로 필터링
+        date_str = selected_date.strftime("%Y-%m-%d")
+        filtered_records = [r for r in records if r.get('날짜') == date_str]
+        
+        if not filtered_records:
+            st.info(f"{date_str} 날짜의 생산 실적이 없습니다.")
+            return
+        
+        # 데이터프레임 생성
+        df = pd.DataFrame(filtered_records)
+        
+        # 통계 섹션
+        st.markdown("### 📊 일일 생산 통계")
+        
+        # 통계 표시 (안전하게 처리)
+        if not df.empty and '목표수량' in df.columns and '생산수량' in df.columns:
+            try:
+                total_target = df['목표수량'].sum()
+                total_production = df['생산수량'].sum()
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("총 목표수량", f"{total_target:,}")
+                
+                with col2:
+                    st.metric("총 생산수량", f"{total_production:,}")
+                
+                with col3:
+                    if total_target > 0:
+                        achievement_rate = (total_production / total_target) * 100
+                        st.metric("달성률", f"{achievement_rate:.1f}%")
+            except Exception as e:
+                st.warning(f"통계 계산 중 오류가 발생했습니다: {str(e)}")
+        
+        # 데이터 표시
+        st.markdown("### 📋 생산 실적 데이터")
+        
+        if not df.empty:
+            # 표시할 컬럼 선택
+            display_columns = [
+                '작업자', '라인번호', '모델차수', '목표수량', '생산수량', '불량수량'
+            ]
+            
+            # 결측값 확인 및 표시할 컬럼 필터링
+            valid_columns = [col for col in display_columns if col in df.columns]
+            
+            # AgGrid를 사용하여 데이터 표시
+            if valid_columns:
+                display_data_grid(df[valid_columns], "생산 실적 데이터")
+            else:
+                st.warning("표시할 열 데이터가 없습니다.")
+        else:
+            st.info(f"{selected_date} 날짜의 생산 실적이 없습니다.")
+    except Exception as e:
+        st.error(f"데이터 처리 중 오류가 발생했습니다: {str(e)}")
+        import traceback
+        print(f"[ERROR] 상세 오류: {traceback.format_exc()}") 
