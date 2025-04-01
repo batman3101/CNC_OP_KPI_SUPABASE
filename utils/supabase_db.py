@@ -815,7 +815,7 @@ class SupabaseDB:
         try:
             print(f"[DEBUG] 삭제 시도 중인 레코드 ID: {record_id}")
             
-            # 기존 데이터 가져오기
+            # 레코드 존재 여부 확인
             response = self.client.table('Production').select('*').eq('id', record_id).execute()
             records = response.data
             
@@ -823,17 +823,22 @@ class SupabaseDB:
                 print(f"[ERROR] 해당 ID의 레코드를 찾을 수 없음: {record_id}")
                 return False
             
+            print(f"[INFO] 삭제할 레코드 정보: {records[0]}")
+            
             # 데이터 삭제
             response = self.client.table('Production').delete().eq('id', record_id).execute()
             
             # 응답 확인
-            if response.data:
-                print(f"[INFO] 레코드 삭제 성공: {record_id}")
+            if hasattr(response, 'data') and response.data:
+                print(f"[INFO] 레코드 삭제 성공: {record_id}, 응답: {response.data}")
                 # 캐시 무효화
                 self._invalidate_cache()
                 return True
             else:
                 print(f"[ERROR] 레코드 삭제 실패: {record_id}, 응답: {response}")
+                # 응답에 오류 여부 확인
+                if hasattr(response, 'error') and response.error:
+                    print(f"[ERROR] 삭제 오류 세부 정보: {response.error}")
                 return False
         
         except Exception as e:
