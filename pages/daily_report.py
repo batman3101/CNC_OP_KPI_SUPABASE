@@ -171,6 +171,8 @@ def show_daily_report():
             # AgGrid 설정
             gb = GridOptionsBuilder.from_dataframe(df[display_columns])
             gb.configure_pagination(enabled=True, paginationAutoPageSize=False, paginationPageSize=100)
+            
+            # 기본 컬럼 설정 - Community 버전 호환
             gb.configure_default_column(
                 value=True,
                 editable=False,
@@ -178,9 +180,13 @@ def show_daily_report():
                 resizable=True,
                 filterable=True
             )
+            
+            # 단순 선택 모드 설정
+            gb.configure_selection(selection_mode='single')
+            
             grid_options = gb.build()
             
-            # AgGrid 표시
+            # AgGrid 표시 - Community 버전 설정
             AgGrid(
                 df[display_columns],
                 gridOptions=grid_options,
@@ -189,8 +195,8 @@ def show_daily_report():
                 data_return_mode='AS_INPUT',
                 update_mode='VALUE_CHANGED',
                 fit_columns_on_grid_load=False,
-                enable_enterprise_modules=False,  # Enterprise 모듈 비활성화
-                allow_unsafe_jscode=False  # 안전하지 않은 JavaScript 코드 비활성화
+                enable_enterprise_modules=False,
+                allow_unsafe_jscode=False
             )
             
             st.write(f"총 {len(df)}개 데이터 표시 중")

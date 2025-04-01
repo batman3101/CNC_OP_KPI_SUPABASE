@@ -196,6 +196,8 @@ def edit_production_data():
                     # AgGrid 설정
                     gb = GridOptionsBuilder.from_dataframe(df)
                     gb.configure_pagination(enabled=True, paginationAutoPageSize=False, paginationPageSize=50)
+                    
+                    # 기본 컬럼 설정 - Community 버전 호환
                     gb.configure_default_column(
                         value=True, 
                         editable=False, 
@@ -203,10 +205,13 @@ def edit_production_data():
                         resizable=True, 
                         filterable=True
                     )
-                    gb.configure_selection('single', use_checkbox=True)
+                    
+                    # 단순 선택 모드 설정
+                    gb.configure_selection(selection_mode='single')
+                    
                     grid_options = gb.build()
                     
-                    # 그리드 출력
+                    # 그리드 출력 - Community 버전 설정
                     grid_response = AgGrid(
                         df,
                         gridOptions=grid_options,
@@ -215,7 +220,7 @@ def edit_production_data():
                         data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
                         fit_columns_on_grid_load=True,
                         height=400,
-                        allow_unsafe_jscode=False  # 안전하지 않은 JavaScript 코드 비활성화
+                        allow_unsafe_jscode=False
                     )
                     
                     # 선택된 행 확인 (선택 여부 안전하게 체크)
@@ -669,6 +674,8 @@ def view_production_data():
                 # AgGrid 설정
                 gb = GridOptionsBuilder.from_dataframe(filtered_df)
                 gb.configure_pagination(enabled=True, paginationAutoPageSize=False, paginationPageSize=50)
+                
+                # 기본 컬럼 설정 - Community 버전 호환
                 gb.configure_default_column(
                     value=True, 
                     editable=False, 
@@ -677,14 +684,12 @@ def view_production_data():
                     filterable=True
                 )
                 
-                # 수량 컬럼 설정
-                for col in ['목표수량', '생산수량', '불량수량']:
-                    if col in cols:
-                        gb.configure_column(col, type=["numericColumn", "numberColumnFilter"])
+                # 단순 선택 모드 설정
+                gb.configure_selection(selection_mode='single')
                 
                 grid_options = gb.build()
                 
-                # 그리드 출력
+                # 그리드 출력 - Community 버전 설정
                 AgGrid(
                     filtered_df,
                     gridOptions=grid_options,
@@ -693,7 +698,7 @@ def view_production_data():
                     data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
                     fit_columns_on_grid_load=True,
                     height=500,
-                    allow_unsafe_jscode=False  # 안전하지 않은 JavaScript 코드 비활성화
+                    allow_unsafe_jscode=False
                 )
             except Exception as e:
                 st.error(f"데이터 표시 중 오류가 발생했습니다: {str(e)}")
