@@ -312,5 +312,12 @@ def display_efficiency_analysis(df):
         import traceback
         print(f"[ERROR] 상세 오류: {traceback.format_exc()}")
 
+def show_daily_report():
+    """
+    app.py에서 호출하기 위한 함수입니다.
+    내부적으로 show() 함수를 호출합니다.
+    """
+    show()
+
 if __name__ == "__main__":
     show() 
