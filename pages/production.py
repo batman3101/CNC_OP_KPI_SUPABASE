@@ -4,7 +4,6 @@ from datetime import datetime
 import json
 import os
 from utils.supabase_db import SupabaseDB
-from st_aggrid import AgGrid, GridOptionsBuilder
 
 def save_production_data(data):
     try:
@@ -215,92 +214,66 @@ def show_production_management():
                     filtered_df = filtered_df[filtered_df['라인번호'] == selected_line]
                 
                 # 데이터 표시 - 인덱스 숨김
-                # AgGrid 옵션 설정
-                gb = GridOptionsBuilder.from_dataframe(filtered_df)
-                gb.configure_pagination(enabled=True, paginationAutoPageSize=False, paginationPageSize=50)
-                gb.configure_side_bar()
-                gb.configure_selection('single')
-                gb.configure_default_column(
-                    groupable=True, 
-                    value=True, 
-                    enableRowGroup=True, 
-                    aggFunc='sum',
-                    editable=False,
-                    sorteable=True,
-                    resizable=True,
-                    filterable=True
-                )
-                grid_options = gb.build()
-                
-                # AgGrid 표시
-                grid_response = AgGrid(
-                    filtered_df,
-                    gridOptions=grid_options,
-                    height=400,
-                    width='100%',
-                    data_return_mode='AS_INPUT',
-                    update_mode='MODEL_CHANGED',
-                    fit_columns_on_grid_load=False,
-                    allow_unsafe_jscode=True
-                )
+                st.dataframe(filtered_df, use_container_width=True, hide_index=True)
                 
                 st.write(f"필터링된 데이터: {len(filtered_df)}개 행")
                 
                 # 선택된 행 데이터를 가져오기
-                selected_rows = grid_response['selected_rows']
+                selected_rows = filtered_df.index.tolist()
                 
                 # 수정 기능
                 st.subheader("데이터 수정")
                 
                 # 수정할 행 선택
                 if not filtered_df.empty:
-                    # AgGrid에서 행 선택 여부 확인
-                    if not selected_rows:
-                        st.info("수정할 행을 선택하세요 (데이터 테이블에서 행을 클릭하세요)")
-                    else:
-                        # 선택된 행 데이터
-                        row_data = selected_rows[0]
+                    row_indices = list(range(len(filtered_df)))
+                    selected_row = st.selectbox(
+                        "수정할 행 선택", 
+                        options=row_indices, 
+                        format_func=lambda i: f"{filtered_df.iloc[i]['날짜']} - {filtered_df.iloc[i]['작업자']} - {filtered_df.iloc[i]['라인번호']}",
+                        key="edit_row_select"
+                    )
+                    
+                    # 선택된 행 데이터
+                    row_data = filtered_df.iloc[selected_row]
+                    
+                    # 수정 폼
+                    with st.form("edit_production_form"):
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            new_target = st.number_input("목표수량", min_value=0, value=int(row_data.get('목표수량', 0)))
+                        with col2:
+                            new_production = st.number_input("생산수량", min_value=0, value=int(row_data.get('생산수량', 0)))
+                        with col3:
+                            new_defects = st.number_input("불량수량", min_value=0, value=int(row_data.get('불량수량', 0)))
                         
-                        # 선택된 행 정보 표시
-                        st.write(f"선택된 데이터: {row_data['날짜']} - {row_data['작업자']} - {row_data['라인번호']}")
+                        # 특이사항 필드 추가
+                        new_note = st.text_area("특이사항", value=row_data.get('특이사항', ''))
                         
-                        # 수정 폼
-                        with st.form("edit_production_form"):
-                            col1, col2, col3 = st.columns(3)
-                            with col1:
-                                new_target = st.number_input("목표수량", min_value=0, value=int(row_data.get('목표수량', 0)))
-                            with col2:
-                                new_production = st.number_input("생산수량", min_value=0, value=int(row_data.get('생산수량', 0)))
-                            with col3:
-                                new_defects = st.number_input("불량수량", min_value=0, value=int(row_data.get('불량수량', 0)))
-                            
-                            # 특이사항 필드 추가
-                            new_note = st.text_area("특이사항", value=row_data.get('특이사항', ''))
-                            
-                            # 저장 버튼
-                            submit = st.form_submit_button("저장")
-                            
-                            if submit:
-                                # 데이터 업데이트
-                                success = st.session_state.db.update_production_record(
-                                    record_id=row_data.get('STT', row_data.get('id', '')),
-                                    data={
-                                        '날짜': row_data['날짜'],
-                                        '작업자': row_data['작업자'],
-                                        '라인번호': row_data['라인번호'],
-                                        '모델차수': row_data.get('모델차수', ''),
-                                        '목표수량': new_target,
-                                        '생산수량': new_production,
-                                        '불량수량': new_defects,
-                                        '특이사항': new_note
-                                    }
-                                )
-                                if success:
-                                    st.success("데이터가 성공적으로 업데이트되었습니다.")
-                                    st.session_state.production_data = load_production_data()  # 데이터 새로고침
-                                    st.rerun()
-                                else:
-                                    st.error("데이터 업데이트 중 오류가 발생했습니다.")
+                        # 저장 버튼
+                        submit = st.form_submit_button("저장")
+                        
+                        if submit:
+                            # 데이터 업데이트
+                            success = st.session_state.db.update_production_record(
+                                record_id=row_data.name,
+                                data={
+                                    '날짜': row_data['날짜'],
+                                    '작업자': row_data['작업자'],
+                                    '라인번호': row_data['라인번호'],
+                                    '모델차수': row_data.get('모델차수', ''),
+                                    '목표수량': new_target,
+                                    '생산수량': new_production,
+                                    '불량수량': new_defects,
+                                    '특이사항': new_note
+                                }
+                            )
+                            if success:
+                                st.success("데이터가 성공적으로 업데이트되었습니다.")
+                                st.session_state.production_data = load_production_data()  # 데이터 새로고침
+                                st.rerun()
+                            else:
+                                st.error("데이터 업데이트 중 오류가 발생했습니다.")
                     
                     # 데이터 삭제 기능 추가
                     with st.form("delete_production_form"):
@@ -310,7 +283,7 @@ def show_production_management():
                         if delete_button:
                             # 데이터 삭제
                             success = st.session_state.db.delete_production_record(
-                                record_id=row_data.get('STT', row_data.get('id', ''))
+                                record_id=row_data.name
                             )
                             if success:
                                 st.success("데이터가 성공적으로 삭제되었습니다.")
@@ -332,36 +305,8 @@ def show_production_management():
         
         if st.session_state.production_data:
             df = pd.DataFrame(st.session_state.production_data)
-            
-            # AgGrid 옵션 설정
-            gb = GridOptionsBuilder.from_dataframe(df)
-            gb.configure_pagination(enabled=True, paginationAutoPageSize=False, paginationPageSize=100)
-            gb.configure_side_bar()
-            gb.configure_selection('multiple', use_checkbox=True)
-            gb.configure_default_column(
-                groupable=True, 
-                value=True, 
-                enableRowGroup=True, 
-                aggFunc='sum',
-                editable=False,
-                sorteable=True,
-                resizable=True,
-                filterable=True
-            )
-            grid_options = gb.build()
-            
-            # AgGrid 표시
-            grid_response = AgGrid(
-                df,
-                gridOptions=grid_options,
-                height=600,
-                width='100%',
-                data_return_mode='AS_INPUT',
-                update_mode='MODEL_CHANGED',
-                fit_columns_on_grid_load=False,
-                allow_unsafe_jscode=True
-            )
-            
+            # 기본 데이터프레임으로 변경
+            st.dataframe(df, use_container_width=True, hide_index=True)
             st.write(f"총 {len(df)}개의 생산 실적 데이터가 로드되었습니다.")
         else:
             st.info("등록된 생산 실적이 없습니다.")
