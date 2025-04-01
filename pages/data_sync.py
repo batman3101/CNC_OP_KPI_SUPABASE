@@ -2,10 +2,18 @@
 # 마지막 업데이트: 2024-08-02
 import streamlit as st
 import os
+import sys
 from datetime import datetime
 from dotenv import load_dotenv
 import pandas as pd
 import json
+
+# 프로젝트 루트 디렉토리를 path에 추가
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(current_dir)
+if project_root not in sys.path:
+    sys.path.append(project_root)
+
 from utils.local_storage import LocalStorage
 from utils.supabase_db import SupabaseDB
 
@@ -437,8 +445,6 @@ def show_data_sync():
       생산수량 INTEGER DEFAULT 0,
       불량수량 INTEGER DEFAULT 0,
       특이사항 TEXT,
-      worker_id UUID REFERENCES Workers(id),
-      model_process_id UUID REFERENCES Model(id),
       created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
       updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     );
