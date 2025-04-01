@@ -3,7 +3,6 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime, timedelta
-from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode
 import sys
 import os
 import numpy as np
@@ -170,8 +169,8 @@ def show_daily_report():
                 '목표수량', '생산수량', '불량수량', '작업효율'
             ]
             
-            # AgGrid를 사용하여 데이터 표시
-            display_data_grid(df[display_columns])
+            # Streamlit 기본 데이터프레임 표시
+            st.dataframe(df[display_columns], use_container_width=True)
         
         # 통계 계산 시에도 특이사항 제외
         if not df.empty:
@@ -324,65 +323,6 @@ def show_daily_report():
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.info(f"{selected_date} 날짜의 생산 실적이 없습니다.") 
-
-# AgGrid를 사용하여 데이터 표시
-def display_data_grid(df, title="데이터 테이블"):
-    try:
-        if df is None or len(df) == 0:
-            st.info("표시할 데이터가 없습니다.")
-            return
-        
-        st.subheader(title)
-        
-        # 페이지네이션 설정
-        if 'data_grid_page_number' not in st.session_state:
-            st.session_state.data_grid_page_number = 1
-        page_size = 10
-        
-        # 페이지네이션된 데이터프레임 가져오기
-        paginated_df, total_pages = paginate_dataframe(df, page_size, st.session_state.data_grid_page_number)
-        
-        # 테이블 표시
-        st.dataframe(paginated_df, use_container_width=True)
-        
-        # 페이지네이션 UI
-        col1, col2, col3, col4 = st.columns([1, 1, 2, 1])
-        with col1:
-            if st.button("◀️ 이전", key="grid_prev", disabled=st.session_state.data_grid_page_number <= 1):
-                st.session_state.data_grid_page_number -= 1
-                st.rerun()
-        with col2:
-            if st.button("다음 ▶️", key="grid_next", disabled=st.session_state.data_grid_page_number >= total_pages):
-                st.session_state.data_grid_page_number += 1
-                st.rerun()
-        with col3:
-            st.write(f"페이지: {st.session_state.data_grid_page_number}/{total_pages}")
-        with col4:
-            new_page = st.number_input("페이지 이동", min_value=1, max_value=total_pages, value=st.session_state.data_grid_page_number, step=1, key="grid_page_input")
-            if new_page != st.session_state.data_grid_page_number:
-                st.session_state.data_grid_page_number = new_page
-                st.rerun()
-    except Exception as e:
-        st.error(f"데이터 그리드 표시 중 오류가 발생했습니다: {str(e)}")
-
-# 페이지네이션 기능 구현
-def paginate_dataframe(dataframe, page_size, page_num):
-    """
-    dataframe을 페이지네이션하여 반환합니다.
-    """
-    total_pages = len(dataframe) // page_size + (1 if len(dataframe) % page_size > 0 else 0)
-    
-    # 페이지 번호 유효성 검사
-    if page_num < 1:
-        page_num = 1
-    elif page_num > total_pages:
-        page_num = total_pages
-    
-    # 페이지 범위 계산
-    start_idx = (page_num - 1) * page_size
-    end_idx = min(start_idx + page_size, len(dataframe))
-    
-    return dataframe.iloc[start_idx:end_idx], total_pages
 
 def show():
     st.title("📊 일일 실적 보고서")
@@ -658,6 +598,25 @@ def display_efficiency_analysis(df):
         st.error(f"효율성 분석 중 오류가 발생했습니다: {str(e)}")
         import traceback
         print(f"[ERROR] 상세 오류: {traceback.format_exc()}")
+
+# 페이지네이션 기능 구현
+def paginate_dataframe(dataframe, page_size, page_num):
+    """
+    dataframe을 페이지네이션하여 반환합니다.
+    """
+    total_pages = len(dataframe) // page_size + (1 if len(dataframe) % page_size > 0 else 0)
+    
+    # 페이지 번호 유효성 검사
+    if page_num < 1:
+        page_num = 1
+    elif page_num > total_pages:
+        page_num = total_pages
+    
+    # 페이지 범위 계산
+    start_idx = (page_num - 1) * page_size
+    end_idx = min(start_idx + page_size, len(dataframe))
+    
+    return dataframe.iloc[start_idx:end_idx], total_pages
 
 if __name__ == "__main__":
     show() 
