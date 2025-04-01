@@ -22,10 +22,10 @@ def save_production_data(data):
         # Supabase에 데이터 저장
         db = SupabaseDB()
         success = db.add_production_record(
-            date=data["날짜"],
+            date=data["날짜"] if "날짜" in data else data.get("생산일자", ""),
             worker=data["작업자"],
-            line_number=data["라인번호"],
-            model=data["모델차수"],
+            line_number=data["라인번호"] if "라인번호" in data else data.get("라인", ""),
+            model=data["모델차수"] if "모델차수" in data else data.get("모델명", ""),
             target_quantity=data["목표수량"],
             production_quantity=data["생산수량"],
             defect_quantity=data["불량수량"],
@@ -40,6 +40,8 @@ def save_production_data(data):
         return success
     except Exception as e:
         st.error(f"데이터 저장 중 오류 발생: {str(e)}")
+        import traceback
+        print(f"[ERROR] 상세 오류: {traceback.format_exc()}")
         return False
 
 def load_production_data():
@@ -231,18 +233,61 @@ def edit_production_data():
             models = st.session_state.models if 'models' in st.session_state else []
             model_names = list(set([model.get('모델명', '') for model in models if '모델명' in model and model.get('모델명', '')]))
             
+            # 선택된 첫 번째 행의 데이터를 기본값으로 설정
+            first_row = selected_rows[0]
+            
+            # 필드명 확인
+            date_field = '날짜'
+            model_field = '모델차수'
+            line_field = '라인번호'
+            
+            # 필드명 자동 감지
+            fields = list(first_row.keys())
+            for field in fields:
+                if '날짜' in field or 'date' in field.lower():
+                    date_field = field
+                if '모델' in field:
+                    model_field = field
+                if '라인' in field:
+                    line_field = field
+            
+            # 디버깅 로그
+            print(f"[DEBUG] 선택된 행 필드명: {fields}")
+            print(f"[DEBUG] 감지된 날짜 필드: {date_field}")
+            print(f"[DEBUG] 감지된 모델 필드: {model_field}")
+            print(f"[DEBUG] 감지된 라인 필드: {line_field}")
+            
             with st.form("실적 수정 폼"):
                 col1, col2 = st.columns(2)
                 with col1:
-                    edit_date = st.date_input("생산일자", datetime.strptime(selected_rows[0]['날짜'], "%Y-%m-%d") if '날짜' in selected_rows[0] else datetime.now())
-                    edit_worker = st.selectbox("작업자", options=worker_names, index=worker_names.index(selected_rows[0].get('작업자', '')) if selected_rows[0].get('작업자', '') in worker_names else 0)
-                    edit_model = st.selectbox("모델명", options=model_names, index=model_names.index(selected_rows[0].get('모델차수', '')) if selected_rows[0].get('모델차수', '') in model_names else 0)
-                    edit_line = st.selectbox("라인", options=line_numbers, index=line_numbers.index(selected_rows[0].get('라인번호', '')) if selected_rows[0].get('라인번호', '') in line_numbers else 0)
+                    # 날짜 필드 처리
+                    try:
+                        edit_date = st.date_input("생산일자", datetime.strptime(first_row.get(date_field, ''), "%Y-%m-%d") if date_field in first_row and first_row.get(date_field) else datetime.now())
+                    except:
+                        edit_date = st.date_input("생산일자", datetime.now())
+                    
+                    # 작업자 필드
+                    default_worker_index = 0
+                    if worker_names and '작업자' in first_row and first_row.get('작업자', '') in worker_names:
+                        default_worker_index = worker_names.index(first_row.get('작업자', ''))
+                    edit_worker = st.selectbox("작업자", options=worker_names, index=default_worker_index)
+                    
+                    # 모델 필드
+                    default_model_index = 0
+                    if model_names and model_field in first_row and first_row.get(model_field, '') in model_names:
+                        default_model_index = model_names.index(first_row.get(model_field, ''))
+                    edit_model = st.selectbox("모델명", options=model_names, index=default_model_index)
+                    
+                    # 라인 필드
+                    default_line_index = 0
+                    if line_numbers and line_field in first_row and first_row.get(line_field, '') in line_numbers:
+                        default_line_index = line_numbers.index(first_row.get(line_field, ''))
+                    edit_line = st.selectbox("라인", options=line_numbers, index=default_line_index)
                 
                 with col2:
-                    edit_target = st.number_input("목표수량", min_value=0, value=int(selected_rows[0].get('목표수량', 0)))
-                    edit_production = st.number_input("생산수량", min_value=0, value=int(selected_rows[0].get('생산수량', 0)))
-                    edit_defect = st.number_input("불량수량", min_value=0, value=int(selected_rows[0].get('불량수량', 0)))
+                    edit_target = st.number_input("목표수량", min_value=0, value=int(first_row.get('목표수량', 0)))
+                    edit_production = st.number_input("생산수량", min_value=0, value=int(first_row.get('생산수량', 0)))
+                    edit_defect = st.number_input("불량수량", min_value=0, value=int(first_row.get('불량수량', 0)))
                     
                 submit_edit = st.form_submit_button("수정 적용")
                 
@@ -256,16 +301,16 @@ def edit_production_data():
                             record_id = selected_row.get('id')
                             
                             # 변경된 데이터 준비
-                            updated_record = {
-                                'id': record_id,
-                                '날짜': edit_date.strftime("%Y-%m-%d"),
-                                '작업자': edit_worker,
-                                '모델차수': edit_model,
-                                '라인번호': edit_line,
-                                '목표수량': int(edit_target),
-                                '생산수량': int(edit_production),
-                                '불량수량': int(edit_defect)
-                            }
+                            updated_record = selected_row.copy()  # 기존 데이터 복사
+                            
+                            # 수정할 필드 업데이트
+                            updated_record[date_field] = edit_date.strftime("%Y-%m-%d")
+                            updated_record['작업자'] = edit_worker
+                            updated_record[model_field] = edit_model
+                            updated_record[line_field] = edit_line
+                            updated_record['목표수량'] = int(edit_target)
+                            updated_record['생산수량'] = int(edit_production)
+                            updated_record['불량수량'] = int(edit_defect)
                             
                             # 데이터 업데이트 - 필터링된 레코드
                             for i, record in enumerate(st.session_state['production_filtered_records']):
@@ -295,6 +340,8 @@ def edit_production_data():
                         st.experimental_rerun()
                     except Exception as e:
                         st.error(f"데이터 수정 중 오류가 발생했습니다: {str(e)}")
+                        import traceback
+                        print(f"[ERROR] 상세 오류: {traceback.format_exc()}")
 
 def add_production_data():
     st.subheader("생산 실적 등록")
