@@ -334,22 +334,34 @@ def display_data_grid(df, title="데이터 테이블"):
         
         st.subheader(title)
         
-        # 가장 기본적인 설정만 사용하여 AgGrid 설정
-        gb = GridOptionsBuilder.from_dataframe(df)
-        gb.configure_pagination(paginationPageSize=10)
-        gb.configure_default_column(sortable=True)
-        gb.configure_selection(selection_mode='single')
-        grid_options = gb.build()
+        # 페이지네이션 설정
+        if 'data_grid_page_number' not in st.session_state:
+            st.session_state.data_grid_page_number = 1
+        page_size = 10
         
-        # 최소한의 옵션으로 그리드 표시
-        AgGrid(
-            df,
-            gridOptions=grid_options,
-            enable_enterprise_modules=False,
-            update_mode=GridUpdateMode.SELECTION_CHANGED,
-            fit_columns_on_grid_load=True,
-            height=400
-        )
+        # 페이지네이션된 데이터프레임 가져오기
+        paginated_df, total_pages = paginate_dataframe(df, page_size, st.session_state.data_grid_page_number)
+        
+        # 테이블 표시
+        st.dataframe(paginated_df, use_container_width=True)
+        
+        # 페이지네이션 UI
+        col1, col2, col3, col4 = st.columns([1, 1, 2, 1])
+        with col1:
+            if st.button("◀️ 이전", key="grid_prev", disabled=st.session_state.data_grid_page_number <= 1):
+                st.session_state.data_grid_page_number -= 1
+                st.rerun()
+        with col2:
+            if st.button("다음 ▶️", key="grid_next", disabled=st.session_state.data_grid_page_number >= total_pages):
+                st.session_state.data_grid_page_number += 1
+                st.rerun()
+        with col3:
+            st.write(f"페이지: {st.session_state.data_grid_page_number}/{total_pages}")
+        with col4:
+            new_page = st.number_input("페이지 이동", min_value=1, max_value=total_pages, value=st.session_state.data_grid_page_number, step=1, key="grid_page_input")
+            if new_page != st.session_state.data_grid_page_number:
+                st.session_state.data_grid_page_number = new_page
+                st.rerun()
     except Exception as e:
         st.error(f"데이터 그리드 표시 중 오류가 발생했습니다: {str(e)}")
 
