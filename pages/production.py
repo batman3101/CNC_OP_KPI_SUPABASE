@@ -199,7 +199,7 @@ def edit_production_data():
             resizable=True, 
             filterable=True
         )
-        gb.configure_selection(selection_mode='single', use_checkbox=True)
+        gb.configure_selection(selection_mode='multiple', use_checkbox=True)
         grid_options = gb.build()
         
         # 그리드 출력
@@ -216,84 +216,85 @@ def edit_production_data():
         selected_rows = grid_response['selected_rows']
         
         if selected_rows:
-            selected_row = selected_rows[0]
-            st.session_state['selected_production_record'] = selected_row
+            st.session_state['selected_production_records'] = selected_rows
             
-            st.subheader("선택된 실적 데이터 수정")
+            st.subheader(f"선택된 {len(selected_rows)}개 실적 데이터 수정")
+            
+            # 작업자 목록 가져오기
+            workers = st.session_state.workers if 'workers' in st.session_state else []
+            worker_names = [worker.get('이름', '') for worker in workers if '이름' in worker]
+            
+            # 라인 목록 가져오기
+            line_numbers = list(set([worker.get('라인번호', '') for worker in workers if '라인번호' in worker and worker.get('라인번호', '')]))
+            
+            # 모델 목록 가져오기
+            models = st.session_state.models if 'models' in st.session_state else []
+            model_names = list(set([model.get('모델명', '') for model in models if '모델명' in model and model.get('모델명', '')]))
             
             with st.form("실적 수정 폼"):
                 col1, col2 = st.columns(2)
                 with col1:
-                    edit_date = st.date_input("생산일자", datetime.strptime(selected_row['생산일자'], "%Y-%m-%d"))
-                    edit_worker = st.text_input("작업자", selected_row.get('작업자', ''))
-                    edit_model = st.text_input("모델명", selected_row.get('모델명', ''))
-                    edit_line = st.text_input("라인", selected_row.get('라인', ''))
+                    edit_date = st.date_input("생산일자", datetime.strptime(selected_rows[0]['날짜'], "%Y-%m-%d") if '날짜' in selected_rows[0] else datetime.now())
+                    edit_worker = st.selectbox("작업자", options=worker_names, index=worker_names.index(selected_rows[0].get('작업자', '')) if selected_rows[0].get('작업자', '') in worker_names else 0)
+                    edit_model = st.selectbox("모델명", options=model_names, index=model_names.index(selected_rows[0].get('모델차수', '')) if selected_rows[0].get('모델차수', '') in model_names else 0)
+                    edit_line = st.selectbox("라인", options=line_numbers, index=line_numbers.index(selected_rows[0].get('라인번호', '')) if selected_rows[0].get('라인번호', '') in line_numbers else 0)
                 
                 with col2:
-                    edit_target = st.number_input("목표수량", min_value=0, value=int(selected_row.get('목표수량', 0)))
-                    edit_production = st.number_input("생산수량", min_value=0, value=int(selected_row.get('생산수량', 0)))
-                    edit_defect = st.number_input("불량수량", min_value=0, value=int(selected_row.get('불량수량', 0)))
+                    edit_target = st.number_input("목표수량", min_value=0, value=int(selected_rows[0].get('목표수량', 0)))
+                    edit_production = st.number_input("생산수량", min_value=0, value=int(selected_rows[0].get('생산수량', 0)))
+                    edit_defect = st.number_input("불량수량", min_value=0, value=int(selected_rows[0].get('불량수량', 0)))
                     
                 submit_edit = st.form_submit_button("수정 적용")
                 
                 if submit_edit:
-                    # 선택된 레코드의 ID
-                    record_id = selected_row.get('id')
-                    
-                    # 변경된 데이터 준비
-                    updated_record = {
-                        'id': record_id,
-                        '생산일자': edit_date.strftime("%Y-%m-%d"),
-                        '작업자': edit_worker,
-                        '모델명': edit_model,
-                        '라인': edit_line,
-                        '목표수량': edit_target,
-                        '생산수량': edit_production,
-                        '불량수량': edit_defect
-                    }
-                    
-                    # 데이터 업데이트
-                    for i, record in enumerate(st.session_state['production_filtered_records']):
-                        if record.get('id') == record_id:
-                            st.session_state['production_filtered_records'][i] = updated_record
-                    
-                    # 모든 레코드 업데이트
-                    all_records = st.session_state.production_data
-                    for i, record in enumerate(all_records):
-                        if record.get('id') == record_id:
-                            all_records[i] = updated_record
-                    
-                    # 데이터 저장
-                    save_production_data(updated_record)
-                    st.success("실적 데이터가 성공적으로 수정되었습니다.")
-                    
-                    # 세션 상태 업데이트
-                    st.session_state['production_filtered_df'] = pd.DataFrame(st.session_state['production_filtered_records'])
-                    st.experimental_rerun()
-            
-            # 삭제 버튼
-            if st.button("선택한 데이터 삭제"):
-                if st.session_state.get('delete_confirmation', False):
-                    # 선택된 레코드의 ID
-                    record_id = selected_row.get('id')
-                    
-                    # 데이터 삭제
-                    updated_records = [r for r in st.session_state.production_data if r.get('id') != record_id]
-                    
-                    # 데이터 저장
-                    save_production_data(updated_records[-1])
-                    st.success("실적 데이터가 성공적으로 삭제되었습니다.")
-                    
-                    # 세션 상태 초기화
-                    st.session_state.pop('production_filtered_df', None)
-                    st.session_state.pop('production_filtered_records', None)
-                    st.session_state.pop('selected_production_record', None)
-                    st.session_state.pop('delete_confirmation', None)
-                    st.session_state.production_data = updated_records
-                    st.experimental_rerun()
-                else:
-                    st.session_state['delete_confirmation'] = True
-                    st.warning("정말로 이 데이터를 삭제하시겠습니까? 삭제를 진행하려면 다시 한번 '선택한 데이터 삭제' 버튼을 클릭하세요.")
+                    try:
+                        success_count = 0
+                        error_count = 0
+                        
+                        for selected_row in selected_rows:
+                            # 선택된 레코드의 ID
+                            record_id = selected_row.get('id')
+                            
+                            # 변경된 데이터 준비
+                            updated_record = {
+                                'id': record_id,
+                                '날짜': edit_date.strftime("%Y-%m-%d"),
+                                '작업자': edit_worker,
+                                '모델차수': edit_model,
+                                '라인번호': edit_line,
+                                '목표수량': int(edit_target),
+                                '생산수량': int(edit_production),
+                                '불량수량': int(edit_defect)
+                            }
+                            
+                            # 데이터 업데이트 - 필터링된 레코드
+                            for i, record in enumerate(st.session_state['production_filtered_records']):
+                                if record.get('id') == record_id:
+                                    st.session_state['production_filtered_records'][i] = updated_record
+                            
+                            # 모든 레코드 업데이트
+                            all_records = st.session_state.production_data
+                            for i, record in enumerate(all_records):
+                                if record.get('id') == record_id:
+                                    all_records[i] = updated_record
+                            
+                            # 데이터 저장
+                            if save_production_data(updated_record):
+                                success_count += 1
+                            else:
+                                error_count += 1
+                        
+                        if success_count > 0:
+                            st.success(f"{success_count}개의 실적 데이터가 성공적으로 수정되었습니다.")
+                        
+                        if error_count > 0:
+                            st.error(f"{error_count}개의 실적 데이터 수정 중 오류가 발생했습니다.")
+                            
+                        # 세션 상태 업데이트
+                        st.session_state['production_filtered_df'] = pd.DataFrame(st.session_state['production_filtered_records'])
+                        st.experimental_rerun()
+                    except Exception as e:
+                        st.error(f"데이터 수정 중 오류가 발생했습니다: {str(e)}")
 
 def add_production_data():
     st.subheader("생산 실적 등록")
@@ -306,15 +307,23 @@ def add_production_data():
             value=datetime.now()
         )
         
-        # 작업자 정보 입력
+        # 작업자 정보 입력 (드롭다운으로 변경)
         col1, col2 = st.columns(2)
         with col1:
-            worker = st.text_input("작업자", "")
+            # 작업자 목록 가져오기
+            workers = st.session_state.workers if 'workers' in st.session_state else []
+            worker_names = [worker.get('이름', '') for worker in workers if '이름' in worker]
+            worker = st.selectbox("작업자", options=worker_names)
         with col2:
-            line = st.text_input("라인", "")
+            # 라인 목록 가져오기
+            workers = st.session_state.workers if 'workers' in st.session_state else []
+            line_numbers = list(set([worker.get('라인번호', '') for worker in workers if '라인번호' in worker and worker.get('라인번호', '')]))
+            line = st.selectbox("라인", options=line_numbers)
         
-        # 모델 정보 입력
-        model = st.text_input("모델명", "")
+        # 모델 정보 입력 (드롭다운으로 변경)
+        models = st.session_state.models if 'models' in st.session_state else []
+        model_names = list(set([model.get('모델명', '') for model in models if '모델명' in model and model.get('모델명', '')]))
+        model = st.selectbox("모델명", options=model_names)
         
         # 수량 입력
         col1, col2, col3 = st.columns(3)
@@ -331,30 +340,33 @@ def add_production_data():
     # 폼 제출 처리
     if submitted:
         if not worker:
-            st.error("작업자를 입력해주세요.")
+            st.error("작업자를 선택해주세요.")
         elif not line:
-            st.error("라인을 입력해주세요.")
+            st.error("라인을 선택해주세요.")
         elif not model:
-            st.error("모델명을 입력해주세요.")
+            st.error("모델명을 선택해주세요.")
         else:
-            # 새 레코드 생성
-            record = {
-                "id": str(uuid.uuid4()),
-                "생산일자": date.strftime("%Y-%m-%d"),
-                "작업자": worker,
-                "라인": line,
-                "모델명": model,
-                "목표수량": int(target),
-                "생산수량": int(prod),
-                "불량수량": int(defect),
-                "등록시간": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            }
-            
-            # 데이터 저장
-            save_production_data(record)
-            
-            st.success("생산 실적이 저장되었습니다.")
-            st.experimental_rerun()
+            try:
+                # 새 레코드 생성
+                record = {
+                    "id": str(uuid.uuid4()),
+                    "날짜": date.strftime("%Y-%m-%d"),
+                    "작업자": worker,
+                    "라인번호": line,
+                    "모델차수": model,
+                    "목표수량": int(target),
+                    "생산수량": int(prod),
+                    "불량수량": int(defect),
+                    "등록시간": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                }
+                
+                # 데이터 저장
+                save_production_data(record)
+                
+                st.success("생산 실적이 저장되었습니다.")
+                st.experimental_rerun()
+            except Exception as e:
+                st.error(f"생산 실적 저장 중 오류가 발생했습니다: {str(e)}")
 
 def view_production_data():
     st.subheader("실적 조회")
