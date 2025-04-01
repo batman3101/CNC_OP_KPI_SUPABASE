@@ -196,16 +196,17 @@ def edit_production_data():
                     # AgGrid 설정
                     gb = GridOptionsBuilder.from_dataframe(df)
                     gb.configure_pagination(enabled=True, paginationAutoPageSize=False, paginationPageSize=50)
-                    gb.configure_selection(selection_mode='single', use_checkbox=True)
+                    gb.configure_side_bar()
                     gb.configure_default_column(
-                        groupable=True, 
+                        groupable=False, 
                         value=True, 
-                        enableRowGroup=True, 
+                        enableRowGroup=False,  # Enterprise 기능 비활성화
                         editable=False, 
                         sortable=True, 
                         resizable=True, 
                         filterable=True
                     )
+                    gb.configure_selection(selection_mode='single', use_checkbox=True)
                     
                     grid_options = gb.build()
                     
@@ -213,6 +214,7 @@ def edit_production_data():
                     grid_response = AgGrid(
                         df,
                         gridOptions=grid_options,
+                        enable_enterprise_modules=False,
                         update_mode=GridUpdateMode.MODEL_CHANGED,
                         data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
                         fit_columns_on_grid_load=True,
@@ -672,32 +674,22 @@ def view_production_data():
                 gb.configure_pagination(enabled=True, paginationAutoPageSize=False, paginationPageSize=50)
                 gb.configure_side_bar()
                 gb.configure_default_column(
-                    groupable=True, 
+                    groupable=False, 
                     value=True, 
-                    enableRowGroup=True, 
+                    enableRowGroup=False,  # Enterprise 기능 비활성화
                     editable=False, 
                     sortable=True, 
                     resizable=True, 
                     filterable=True
                 )
                 
-                # 컬럼별 설정 (존재하는 컬럼만)
+                # 컬럼별 설정 (Enterprise 기능 제거)
                 cols = filtered_df.columns.tolist()
                 
-                if '생산일자' in cols:
-                    gb.configure_column("생산일자", rowGroup=True, hide=False)
-                
-                if '작업자' in cols:
-                    gb.configure_column("작업자", rowGroup=True, hide=False)
-                
-                if '라인' in cols or '라인번호' in cols:
-                    line_col = '라인' if '라인' in cols else '라인번호'
-                    gb.configure_column(line_col, rowGroup=True, hide=False)
-                
-                # 수량 컬럼 설정
+                # 수량 컬럼 설정 - 집계 함수(aggFunc) 제거하고 숫자 컬럼 타입만 지정
                 for col in ['목표수량', '생산수량', '불량수량']:
                     if col in cols:
-                        gb.configure_column(col, aggFunc="sum", type=["numericColumn", "numberColumnFilter"])
+                        gb.configure_column(col, type=["numericColumn", "numberColumnFilter"])
                 
                 grid_options = gb.build()
                 

@@ -173,10 +173,10 @@ def show_daily_report():
             gb.configure_pagination(enabled=True, paginationAutoPageSize=False, paginationPageSize=100)
             gb.configure_side_bar()
             gb.configure_default_column(
-                groupable=True,
+                groupable=False,  # Enterprise 기능 비활성화
                 value=True,
-                enableRowGroup=True,
-                aggFunc='sum',
+                enableRowGroup=False,  # Enterprise 기능 비활성화
+                aggFunc=None,  # Enterprise 기능 제거
                 editable=False,
                 sorteable=True,
                 resizable=True,
@@ -193,7 +193,8 @@ def show_daily_report():
                 data_return_mode='AS_INPUT',
                 update_mode='VALUE_CHANGED',
                 fit_columns_on_grid_load=False,
-                allow_unsafe_jscode=True
+                allow_unsafe_jscode=True,
+                enable_enterprise_modules=False  # Enterprise 모듈 비활성화
             )
             
             st.write(f"총 {len(df)}개 데이터 표시 중")
