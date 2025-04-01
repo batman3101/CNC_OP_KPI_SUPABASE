@@ -506,10 +506,10 @@ def add_production_data():
 def view_production_data():
     st.subheader("실적 조회")
     
-    # LocalStorage 대신 Supabase DB 데이터 사용
-    if 'production_data' not in st.session_state or st.session_state.production_data is None:
-        st.session_state.production_data = load_production_data()
+    # 데이터 로드 - 항상 최신 데이터 사용
+    st.session_state.production_data = load_production_data()
     
+    # 조회 필터
     with st.form("조회 필터", clear_on_submit=False):
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -521,31 +521,37 @@ def view_production_data():
         
         filter_submitted = st.form_submit_button("조회")
     
-    if filter_submitted or 'view_filtered_df' in st.session_state:
-        try:
-            # records = storage.load_production_records()  # 이전 코드
-            records = st.session_state.production_data  # Supabase에서 가져온 데이터 사용
-            
-            # 로그 추가 - 콘솔에만 출력하도록 변경
-            print(f"[DEBUG] 전체 레코드 수: {len(records)}개")
-            if len(records) > 0:
-                print(f"[DEBUG] 데이터 샘플: {records[0]}")
-                print(f"[DEBUG] 필드명: {list(records[0].keys())}")
-            
-            # 날짜 변환
-            str_start_date = start_date.strftime("%Y-%m-%d")
-            str_end_date = end_date.strftime("%Y-%m-%d")
-            
-            # 필터링 로직 개선 - 다양한 필드명에 대응
+    # 필터 적용 전체를 try-except로 보호
+    try:
+        # 필터 적용 여부 확인
+        if filter_submitted or 'view_filtered_key' in st.session_state:
+            # 필터링된 데이터 준비
             filtered_records = []
-            date_field = None
-            worker_field = None
-            model_field = None
-            line_field = None
             
-            # 필드명 자동 감지
-            if len(records) > 0:
-                fields = list(records[0].keys())
+            # 필터 제출 시 새로 필터링
+            if filter_submitted:
+                str_start_date = start_date.strftime("%Y-%m-%d")
+                str_end_date = end_date.strftime("%Y-%m-%d")
+                
+                # 캐시 키 생성
+                filter_key = f"{str_start_date}_{str_end_date}_{search_term}"
+                st.session_state['view_filtered_key'] = filter_key
+                
+                # 필드명 자동 감지
+                records = st.session_state.production_data
+                if not records or len(records) == 0:
+                    st.warning("데이터가 없습니다.")
+                    return
+                
+                sample_record = records[0]
+                fields = list(sample_record.keys())
+                
+                # 필드명 자동 감지
+                date_field = None
+                worker_field = None
+                model_field = None
+                line_field = None
+                
                 for field in fields:
                     if '날짜' in field or 'date' in field.lower():
                         date_field = field
@@ -555,109 +561,112 @@ def view_production_data():
                         model_field = field
                     if '라인' in field or 'line' in field.lower():
                         line_field = field
-            
-            if not date_field and len(records) > 0:
-                date_field = 'date' if 'date' in records[0] else '날짜'
-            if not worker_field and len(records) > 0:
-                worker_field = 'worker' if 'worker' in records[0] else '작업자'
-            if not model_field and len(records) > 0:
-                model_field = 'model' if 'model' in records[0] else '모델차수'
-            if not line_field and len(records) > 0:
-                line_field = 'line_number' if 'line_number' in records[0] else '라인번호'
-            
-            # 로그 추가 - 콘솔에만 출력하도록 변경
-            print(f"[DEBUG] 사용할 날짜 필드: {date_field}")
-            print(f"[DEBUG] 사용할 작업자 필드: {worker_field}")
-            print(f"[DEBUG] 사용할 모델 필드: {model_field}")
-            print(f"[DEBUG] 사용할 라인 필드: {line_field}")
-            
-            for record in records:
-                # 날짜 필드가 있는지 확인
-                if date_field not in record:
-                    continue
-                    
-                record_date = str(record.get(date_field, ''))
                 
-                # 날짜 필터링 - 포함 관계로 변경 (contains)
-                if str_start_date in record_date or str_end_date in record_date or (
-                    str_start_date <= record_date <= str_end_date):
+                # 기본값 설정
+                if not date_field:
+                    date_field = '날짜' if '날짜' in sample_record else 'date'
+                if not worker_field:
+                    worker_field = '작업자' if '작업자' in sample_record else 'worker'
+                if not model_field:
+                    model_field = '모델차수' if '모델차수' in sample_record else 'model'
+                if not line_field:
+                    line_field = '라인번호' if '라인번호' in sample_record else 'line_number'
+                
+                # 필터링 실행
+                for record in records:
+                    if date_field not in record:
+                        continue
+                        
+                    record_date = str(record.get(date_field, ''))
                     
-                    # 검색어 필터링
-                    if not search_term:
-                        filtered_records.append(record)
-                    else:
-                        search_term_lower = search_term.lower()
-                        if (worker_field in record and search_term_lower in str(record.get(worker_field, '')).lower()) or \
-                        (model_field in record and search_term_lower in str(record.get(model_field, '')).lower()) or \
-                        (line_field in record and search_term_lower in str(record.get(line_field, '')).lower()):
+                    # 날짜 필터링 (범위 내)
+                    if str_start_date <= record_date <= str_end_date:
+                        # 검색어 필터링
+                        if not search_term:
                             filtered_records.append(record)
+                        else:
+                            search_term_lower = search_term.lower()
+                            if (worker_field in record and search_term_lower in str(record.get(worker_field, '')).lower()) or \
+                            (model_field in record and search_term_lower in str(record.get(model_field, '')).lower()) or \
+                            (line_field in record and search_term_lower in str(record.get(line_field, '')).lower()):
+                                filtered_records.append(record)
+                
+                # 필터링 결과 저장
+                st.session_state['view_filtered_records'] = filtered_records
+            else:
+                # 기존 필터링 결과 사용
+                if 'view_filtered_records' in st.session_state:
+                    filtered_records = st.session_state['view_filtered_records']
             
-            print(f"[DEBUG] 필터링된 레코드 수: {len(filtered_records)}개")
-            
-            if not filtered_records:
+            # 결과 수 확인
+            if len(filtered_records) == 0:
                 st.warning("조건에 맞는 데이터가 없습니다.")
                 return
             
-            # 필터링된 DataFrame 생성 - 필드명 수정
-            filtered_df = pd.DataFrame(filtered_records)
-            
-            # 컬럼명 확인
-            print(f"[DEBUG] DataFrame 컬럼: {filtered_df.columns.tolist()}")
-            
-            # 필드명 맵핑 (필요한 경우)
-            column_mapping = {}
-            if date_field != '생산일자' and date_field in filtered_df.columns:
-                column_mapping[date_field] = '생산일자'
-            if worker_field != '작업자' and worker_field in filtered_df.columns:
-                column_mapping[worker_field] = '작업자'
-            if model_field != '모델명' and model_field in filtered_df.columns:
-                column_mapping[model_field] = '모델명'
-            if line_field != '라인' and line_field in filtered_df.columns:
-                column_mapping[line_field] = '라인'
-            
-            # 필드명 변경
-            if column_mapping:
-                filtered_df = filtered_df.rename(columns=column_mapping)
-                print(f"[DEBUG] 컬럼 매핑 후 DataFrame 컬럼: {filtered_df.columns.tolist()}")
-            
-            st.session_state['view_filtered_df'] = filtered_df
-            
+            # 결과 정보 표시
             st.info(f"총 {len(filtered_records)}개의 데이터가 검색되었습니다.")
             
-            # 필요한 컬럼이 있는지 확인
-            needed_columns = ['목표수량', '생산수량', '불량수량']
-            missing_columns = [col for col in needed_columns if col not in filtered_df.columns]
-            if missing_columns:
-                print(f"[WARNING] 누락된 컬럼: {missing_columns}")
-            
-            # 통계 정보 표시 - 안전하게 컬럼 존재 여부 확인
-            col1, col2, col3 = st.columns(3)
+            # DataFrame 생성
             try:
+                # 안전하게 DataFrame 생성
+                filtered_df = pd.DataFrame(filtered_records)
+                
+                # 필드명 매핑 준비
+                column_mapping = {}
+                
+                # 실제 컬럼이 있는 경우만 매핑
+                cols = filtered_df.columns.tolist()
+                
+                # 날짜 필드 매핑
+                date_cols = [col for col in cols if '날짜' in col or 'date' in col.lower()]
+                if date_cols and date_cols[0] != '생산일자':
+                    column_mapping[date_cols[0]] = '생산일자'
+                
+                # 작업자 필드 매핑
+                worker_cols = [col for col in cols if '작업자' in col or 'worker' in col.lower()]
+                if worker_cols and worker_cols[0] != '작업자':
+                    column_mapping[worker_cols[0]] = '작업자'
+                
+                # 모델 필드 매핑
+                model_cols = [col for col in cols if '모델' in col or 'model' in col.lower()]
+                if model_cols and model_cols[0] != '모델명':
+                    column_mapping[model_cols[0]] = '모델명'
+                
+                # 라인 필드 매핑
+                line_cols = [col for col in cols if '라인' in col or 'line' in col.lower()]
+                if line_cols and line_cols[0] != '라인':
+                    column_mapping[line_cols[0]] = '라인'
+                
+                # 필드명 변경
+                if column_mapping:
+                    filtered_df = filtered_df.rename(columns=column_mapping)
+                
+                # 통계 정보 표시
+                col1, col2, col3 = st.columns(3)
+                
                 with col1:
                     if '목표수량' in filtered_df.columns:
                         total_target = filtered_df['목표수량'].sum()
                         st.metric("총 목표수량", f"{total_target:,}")
+                
                 with col2:
                     if '생산수량' in filtered_df.columns:
                         total_production = filtered_df['생산수량'].sum()
                         st.metric("총 생산수량", f"{total_production:,}")
+                
                 with col3:
                     if '불량수량' in filtered_df.columns:
                         total_defect = filtered_df['불량수량'].sum()
                         st.metric("총 불량수량", f"{total_defect:,}")
                 
-                # 작업효율 계산 (목표수량이 0이 아닌 경우만)
+                # 작업효율 계산
                 if '목표수량' in filtered_df.columns and '생산수량' in filtered_df.columns:
                     total_target = filtered_df['목표수량'].sum()
-                    total_production = filtered_df['생산수량'].sum()
-                    if total_target > 0:
+                    if total_target > 0:  # 0으로 나누기 방지
+                        total_production = filtered_df['생산수량'].sum()
                         efficiency = (total_production / total_target) * 100
                         st.metric("평균 작업효율", f"{efficiency:.1f}%")
-            except Exception as e:
-                st.error(f"통계 정보 계산 중 오류 발생: {str(e)}")
-                print(f"[ERROR] 통계 계산 오류: {str(e)}")
-            
-            try:
+                
                 # AgGrid 설정
                 gb = GridOptionsBuilder.from_dataframe(filtered_df)
                 gb.configure_pagination(enabled=True, paginationAutoPageSize=False, paginationPageSize=50)
@@ -672,21 +681,23 @@ def view_production_data():
                     filterable=True
                 )
                 
-                # 날짜, 작업자, 라인별 그룹핑 설정 - 필드명 확인 먼저 수행
-                if '생산일자' in filtered_df.columns:
-                    gb.configure_column("생산일자", rowGroup=True, hide=False)
-                if '작업자' in filtered_df.columns:
-                    gb.configure_column("작업자", rowGroup=True, hide=False)
-                if '라인' in filtered_df.columns:
-                    gb.configure_column("라인", rowGroup=True, hide=False)
+                # 컬럼별 설정 (존재하는 컬럼만)
+                cols = filtered_df.columns.tolist()
                 
-                # 집계 함수 설정 - 필드명 확인 먼저 수행
-                if '목표수량' in filtered_df.columns:
-                    gb.configure_column("목표수량", aggFunc="sum", type=["numericColumn", "numberColumnFilter"])
-                if '생산수량' in filtered_df.columns:
-                    gb.configure_column("생산수량", aggFunc="sum", type=["numericColumn", "numberColumnFilter"])
-                if '불량수량' in filtered_df.columns:
-                    gb.configure_column("불량수량", aggFunc="sum", type=["numericColumn", "numberColumnFilter"])
+                if '생산일자' in cols:
+                    gb.configure_column("생산일자", rowGroup=True, hide=False)
+                
+                if '작업자' in cols:
+                    gb.configure_column("작업자", rowGroup=True, hide=False)
+                
+                if '라인' in cols or '라인번호' in cols:
+                    line_col = '라인' if '라인' in cols else '라인번호'
+                    gb.configure_column(line_col, rowGroup=True, hide=False)
+                
+                # 수량 컬럼 설정
+                for col in ['목표수량', '생산수량', '불량수량']:
+                    if col in cols:
+                        gb.configure_column(col, aggFunc="sum", type=["numericColumn", "numberColumnFilter"])
                 
                 grid_options = gb.build()
                 
@@ -701,13 +712,16 @@ def view_production_data():
                     height=500
                 )
             except Exception as e:
-                st.error(f"데이터 그리드 표시 중 오류 발생: {str(e)}")
-                print(f"[ERROR] 데이터 그리드 오류: {str(e)}")
-                print(f"[DEBUG] 문제의 DataFrame 정보: 컬럼={filtered_df.columns.tolist()}, 크기={filtered_df.shape}")
-        except Exception as e:
-            st.error(f"데이터 처리 중 오류 발생: {str(e)}")
-            import traceback
-            print(f"[ERROR] 상세 오류: {traceback.format_exc()}")
+                st.error(f"데이터 표시 중 오류가 발생했습니다: {str(e)}")
+                import traceback
+                print(f"[ERROR] 데이터 표시 상세 오류: {traceback.format_exc()}")
+                print(f"[DEBUG] DataFrame 정보: 크기={len(filtered_records)}개 레코드")
+                if len(filtered_records) > 0:
+                    print(f"[DEBUG] 샘플 레코드 키: {list(filtered_records[0].keys())}")
+    except Exception as e:
+        st.error(f"데이터 처리 중 오류가 발생했습니다: {str(e)}")
+        import traceback
+        print(f"[ERROR] 상세 오류: {traceback.format_exc()}")
 
 if __name__ == "__main__":
     show_production_management() 
