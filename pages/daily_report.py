@@ -42,6 +42,9 @@ def show_daily_report():
         df = pd.DataFrame(current_records)
         df_prev = pd.DataFrame(previous_records) if previous_records else pd.DataFrame()
         
+        # 총 데이터 수 표시
+        st.info(f"해당 날짜({selected_date.strftime('%Y-%m-%d')})의 총 데이터: {len(df)}개")
+        
         # 작업 효율 계산: ((생산수량-불량수량)/목표수량) × 100
         df['작업효율'] = round(((df['생산수량'] - df['불량수량']) / df['목표수량']) * 100, 1)
         # 작업효율에 % 기호 추가
@@ -57,7 +60,7 @@ def show_daily_report():
             ]
             
             # 데이터프레임 표시
-            # AgGrid 옵션 설정
+            # AgGrid 설정
             gb = GridOptionsBuilder.from_dataframe(df[display_columns])
             gb.configure_pagination(enabled=True, paginationAutoPageSize=False, paginationPageSize=50)
             gb.configure_side_bar()
@@ -73,11 +76,10 @@ def show_daily_report():
             )
             grid_options = gb.build()
             
-            # AgGrid 표시
             AgGrid(
                 df[display_columns],
                 gridOptions=grid_options,
-                height=400,
+                height=500,
                 width='100%',
                 data_return_mode='AS_INPUT',
                 update_mode='MODEL_CHANGED',
@@ -146,8 +148,14 @@ def show_daily_report():
         st.subheader("작업자별 생산량")
         
         # 그래프 표시 시에도 특이사항 제외
-        workers = df['작업자'].unique()
-        production_by_worker = df.groupby('작업자')['생산수량'].sum()
+        # 작업자별로 데이터 그룹화하여 집계
+        worker_data = df.groupby('작업자').agg({
+            '목표수량': 'sum',
+            '생산수량': 'sum',
+            '불량수량': 'sum'
+        }).reset_index()
+        
+        workers = worker_data['작업자'].tolist()
         
         # Plotly 그래프 생성
         fig = go.Figure()
@@ -155,8 +163,8 @@ def show_daily_report():
         # 목표수량 막대 (하늘색) - 맨 뒤에 배치
         fig.add_trace(go.Bar(
             name='목표수량',
-            x=workers,  # 정렬된 작업자 리스트 사용
-            y=df['목표수량'],
+            x=workers,
+            y=worker_data['목표수량'],
             marker_color='lightblue',
             width=0.5,
             opacity=0.7  # 약간 투명하게 설정
@@ -165,8 +173,8 @@ def show_daily_report():
         # 생산수량 꺾은선 (파란색) - 두 번째로 배치
         fig.add_trace(go.Scatter(
             name='생산수량',
-            x=workers,  # 정렬된 작업자 리스트 사용
-            y=df['생산수량'],
+            x=workers,
+            y=worker_data['생산수량'],
             mode='lines+markers',
             line=dict(
                 color='blue',
@@ -183,8 +191,8 @@ def show_daily_report():
         # 불량수량 꺾은선 (빨간색) - 맨 앞에 배치
         fig.add_trace(go.Scatter(
             name='불량수량',
-            x=workers,  # 정렬된 작업자 리스트 사용
-            y=df['불량수량'],
+            x=workers,
+            y=worker_data['불량수량'],
             mode='lines+markers',
             line=dict(
                 color='red',
