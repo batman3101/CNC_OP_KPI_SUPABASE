@@ -6,8 +6,6 @@ import os
 import sys
 import uuid
 from utils.supabase_db import SupabaseDB
-from st_aggrid import AgGrid, GridOptionsBuilder
-from st_aggrid import GridUpdateMode, DataReturnMode
 from utils.local_storage import LocalStorage
 import utils.common as common
 
@@ -16,6 +14,25 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(current_dir)
 if project_root not in sys.path:
     sys.path.append(project_root)
+
+# 페이지네이션 기능 구현
+def paginate_dataframe(dataframe, page_size, page_num):
+    """
+    dataframe을 페이지네이션하여 반환합니다.
+    """
+    total_pages = len(dataframe) // page_size + (1 if len(dataframe) % page_size > 0 else 0)
+    
+    # 페이지 번호 유효성 검사
+    if page_num < 1:
+        page_num = 1
+    elif page_num > total_pages:
+        page_num = total_pages
+    
+    # 페이지 범위 계산
+    start_idx = (page_num - 1) * page_size
+    end_idx = min(start_idx + page_size, len(dataframe))
+    
+    return dataframe.iloc[start_idx:end_idx], total_pages
 
 def save_production_data(data):
     try:
@@ -163,34 +180,52 @@ def edit_production_data():
             st.markdown("### 📝 데이터 수정/삭제")
             st.info(f"총 {record_count}개의 데이터가 검색되었습니다. 수정할 데이터를 선택하세요.")
             
-            # DataFrame 생성 및 표시
+            # DataFrame 생성 및 표시 (AgGrid 대신)
             df = pd.DataFrame(filtered_records)
             
             if df.empty:
                 st.warning("표시할 데이터가 없습니다.")
                 return
                 
-            # 매우 기본적인 AgGrid 설정
-            gb = GridOptionsBuilder.from_dataframe(df)
-            gb.configure_pagination(paginationPageSize=10)
-            gb.configure_default_column(sortable=True)
-            gb.configure_selection(selection_mode='single')
-            grid_options = gb.build()
+            # 페이지네이션 설정
+            if 'edit_page_number' not in st.session_state:
+                st.session_state.edit_page_number = 1
+            page_size = 10
             
-            # 간소화된 AgGrid 호출
-            grid_result = AgGrid(
-                df,
-                gridOptions=grid_options,
-                enable_enterprise_modules=False,
-                update_mode=GridUpdateMode.SELECTION_CHANGED,
-                fit_columns_on_grid_load=True,
-                height=300
+            # 페이지네이션된 데이터프레임 가져오기
+            paginated_df, total_pages = paginate_dataframe(df, page_size, st.session_state.edit_page_number)
+            
+            # 테이블 표시
+            st.dataframe(paginated_df, use_container_width=True)
+            
+            # 페이지네이션 UI
+            col1, col2, col3, col4 = st.columns([1, 1, 2, 1])
+            with col1:
+                if st.button("◀️ 이전", disabled=st.session_state.edit_page_number <= 1):
+                    st.session_state.edit_page_number -= 1
+                    st.experimental_rerun()
+            with col2:
+                if st.button("다음 ▶️", disabled=st.session_state.edit_page_number >= total_pages):
+                    st.session_state.edit_page_number += 1
+                    st.experimental_rerun()
+            with col3:
+                st.write(f"페이지: {st.session_state.edit_page_number}/{total_pages}")
+            with col4:
+                new_page = st.number_input("페이지 이동", min_value=1, max_value=total_pages, value=st.session_state.edit_page_number, step=1)
+                if new_page != st.session_state.edit_page_number:
+                    st.session_state.edit_page_number = new_page
+                    st.experimental_rerun()
+            
+            # 데이터 선택 기능
+            st.markdown("### 🔍 데이터 선택")
+            selected_index = st.selectbox(
+                "수정할 데이터를 선택하세요",
+                options=paginated_df.index.tolist(),
+                format_func=lambda x: f"{paginated_df.loc[x, '날짜']} - {paginated_df.loc[x, '작업자']} - {paginated_df.loc[x, '모델차수']} (목표: {paginated_df.loc[x, '목표수량']}, 생산: {paginated_df.loc[x, '생산수량']})"
             )
             
-            # 선택된 행 처리
-            selected_rows = grid_result.get('selected_rows', [])
-            if selected_rows and len(selected_rows) > 0:
-                selected_row = selected_rows[0]
+            if selected_index is not None:
+                selected_row = df.loc[selected_index].to_dict()
                 
                 st.markdown("---")
                 st.markdown("### ✏️ 선택된 데이터 수정")
@@ -452,23 +487,35 @@ def view_production_data():
         if df.empty:
             st.warning("표시할 데이터가 없습니다.")
             return
-            
-        # 매우 기본적인 AgGrid 설정
-        gb = GridOptionsBuilder.from_dataframe(df)
-        gb.configure_pagination(paginationPageSize=10)
-        gb.configure_default_column(sortable=True)
-        gb.configure_selection(selection_mode='single')
-        grid_options = gb.build()
         
-        # 간소화된 AgGrid 호출
-        grid_result = AgGrid(
-            df,
-            gridOptions=grid_options,
-            enable_enterprise_modules=False,
-            update_mode=GridUpdateMode.SELECTION_CHANGED,
-            fit_columns_on_grid_load=True,
-            height=400
-        )
+        # 페이지네이션 설정
+        if 'view_page_number' not in st.session_state:
+            st.session_state.view_page_number = 1
+        page_size = 10
+        
+        # 페이지네이션된 데이터프레임 가져오기
+        paginated_df, total_pages = paginate_dataframe(df, page_size, st.session_state.view_page_number)
+        
+        # 테이블 표시
+        st.dataframe(paginated_df, use_container_width=True)
+        
+        # 페이지네이션 UI
+        col1, col2, col3, col4 = st.columns([1, 1, 2, 1])
+        with col1:
+            if st.button("◀️ 이전", key="view_prev", disabled=st.session_state.view_page_number <= 1):
+                st.session_state.view_page_number -= 1
+                st.experimental_rerun()
+        with col2:
+            if st.button("다음 ▶️", key="view_next", disabled=st.session_state.view_page_number >= total_pages):
+                st.session_state.view_page_number += 1
+                st.experimental_rerun()
+        with col3:
+            st.write(f"페이지: {st.session_state.view_page_number}/{total_pages}")
+        with col4:
+            new_page = st.number_input("페이지 이동", min_value=1, max_value=total_pages, value=st.session_state.view_page_number, step=1, key="view_page_input")
+            if new_page != st.session_state.view_page_number:
+                st.session_state.view_page_number = new_page
+                st.experimental_rerun()
         
         # 통계 계산 및 표시
         if not df.empty and '목표수량' in df.columns and '생산수량' in df.columns:
@@ -491,11 +538,17 @@ def view_production_data():
             except Exception as e:
                 st.warning(f"통계 계산 중 오류가 발생했습니다: {str(e)}")
         
-        # 선택된 행 처리
-        selected_rows = grid_result.get('selected_rows', [])
-        if selected_rows and len(selected_rows) > 0:
+        # 선택된 데이터 상세 정보
+        st.markdown("### 🔍 데이터 선택")
+        selected_index = st.selectbox(
+            "상세 정보를 볼 데이터를 선택하세요",
+            options=paginated_df.index.tolist(),
+            format_func=lambda x: f"{paginated_df.loc[x, '날짜']} - {paginated_df.loc[x, '작업자']} - {paginated_df.loc[x, '모델차수']} (목표: {paginated_df.loc[x, '목표수량']}, 생산: {paginated_df.loc[x, '생산수량']})"
+        )
+        
+        if selected_index is not None:
             with st.expander("📄 선택한 데이터 상세 정보", expanded=True):
-                st.json(selected_rows[0])
+                st.json(df.loc[selected_index].to_dict())
     
     except Exception as e:
         st.error(f"데이터 처리 중 오류가 발생했습니다: {str(e)}")
