@@ -567,19 +567,44 @@ class SupabaseDB:
             max_retries = 3
             for attempt in range(max_retries):
                 try:
-                    # 두 가지 테이블 이름으로 시도
+                    # 페이지네이션으로 모든 데이터 가져오기
                     for table_name in table_names:
                         try:
-                            query = self.client.table(table_name).select('*').limit(10000)  # 최대 10000개 레코드 조회로 수정
-                            print(f"[DEBUG] 쿼리 생성: 테이블={table_name}, limit=10000")
-                            response = query.execute()
+                            page_size = 1000
+                            offset = 0
+                            table_records = []
                             
-                            if response and hasattr(response, 'data') and response.data:
-                                all_records = response.data
-                                print(f"[DEBUG] 테이블 '{table_name}'에서 {len(all_records)}개 레코드 조회 성공")
-                                break
+                            while True:
+                                print(f"[DEBUG] 페이지네이션 조회: 테이블={table_name}, 페이지={offset//page_size+1}, offset={offset}, limit={page_size}")
+                                query = self.client.table(table_name).select('*').limit(page_size).offset(offset)
+                                response = query.execute()
+                                
+                                # 응답 검증
+                                if not response or not hasattr(response, 'data'):
+                                    print(f"[DEBUG] 테이블 '{table_name}' 페이지 {offset//page_size+1} 응답 없음")
+                                    break
+                                
+                                records = response.data
+                                if not records:
+                                    print(f"[DEBUG] 테이블 '{table_name}' 페이지 {offset//page_size+1} 데이터 없음")
+                                    break
+                                
+                                table_records.extend(records)
+                                print(f"[DEBUG] 테이블 '{table_name}' 페이지 {offset//page_size+1}: {len(records)}개 레코드 로드됨 (누적: {len(table_records)}개)")
+                                
+                                # 다음 페이지를 위한 offset 증가
+                                if len(records) < page_size:
+                                    break  # 마지막 페이지
+                                
+                                offset += page_size
+                            
+                            if table_records:
+                                print(f"[DEBUG] 테이블 '{table_name}'에서 총 {len(table_records)}개 레코드 로드 완료")
+                                all_records = table_records
+                                break  # 성공적으로 데이터를 가져온 테이블을 사용
+                            
                         except Exception as e:
-                            print(f"[DEBUG] 테이블 '{table_name}' 조회 실패: {e}")
+                            print(f"[DEBUG] 테이블 '{table_name}' 페이지네이션 조회 실패: {e}")
                     
                     if all_records:
                         break  # 데이터를 가져왔으므로 재시도 중단

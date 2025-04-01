@@ -1,7 +1,21 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.express as px
 from datetime import datetime, timedelta
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode
+import sys
+import os
+import numpy as np
+
+# 프로젝트 루트 디렉토리를 path에 추가
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(current_dir)
+if project_root not in sys.path:
+    sys.path.append(project_root)
+
+from utils.local_storage import LocalStorage
+import utils.common as common
 
 def calculate_change_rate(current, previous):
     if previous == 0:
@@ -25,14 +39,91 @@ def show_daily_report():
     # 전일 날짜 계산
     previous_date = selected_date - timedelta(days=1)
     
-    # 데이터 조회 - 로그 추가
+    # 직접 Supabase에서 데이터 조회
     st.write(f"[DEBUG] 선택한 날짜: {selected_date.strftime('%Y-%m-%d')}")
     
     # 세션 상태에 데이터가 있는지 확인
     if 'production_data' not in st.session_state or st.session_state.production_data is None:
         st.write("[DEBUG] 세션에 production_data 없음, 새로 로드합니다")
-        from pages.production import load_production_data
-        st.session_state.production_data = load_production_data()
+        
+        # 캐시 무효화 후 직접 데이터 로드
+        st.session_state.db._invalidate_cache()
+        
+        # 직접 Supabase에서 페이지네이션으로 데이터 로드
+        try:
+            page_size = 1000
+            offset = 0
+            all_records = []
+            
+            while True:
+                response = st.session_state.db.client.table('Production').select('*').limit(page_size).offset(offset).execute()
+                records = response.data
+                
+                if not records:
+                    break
+                    
+                all_records.extend(records)
+                
+                if len(records) < page_size:
+                    break
+                    
+                offset += page_size
+            
+            # 수동으로 필드 형식 변환
+            formatted_records = []
+            for record in all_records:
+                formatted_record = {}
+                for key, value in record.items():
+                    # id 필드 처리
+                    if key == 'id':
+                        formatted_record['STT'] = value
+                    # 날짜 필드 처리
+                    elif key == 'date' or key == '날짜':
+                        formatted_record['날짜'] = value
+                    # 작업자 필드 처리
+                    elif key == 'worker' or key == '작업자' or '작업자' in key:
+                        formatted_record['작업자'] = value
+                    # 라인번호 필드 처리
+                    elif key == 'line_number' or key == '라인번호' or '라인' in key:
+                        formatted_record['라인번호'] = value
+                    # 모델차수 필드 처리
+                    elif key == 'model' or key == '모델차수' or '모델' in key:
+                        formatted_record['모델차수'] = value
+                    # 목표수량 필드 처리
+                    elif key == 'target_quantity' or key == '목표수량' or '목표' in key:
+                        formatted_record['목표수량'] = int(value) if value else 0
+                    # 생산수량 필드 처리
+                    elif key == 'production_quantity' or key == '생산수량' or '생산' in key:
+                        formatted_record['생산수량'] = int(value) if value else 0
+                    # 불량수량 필드 처리
+                    elif key == 'defect_quantity' or key == '불량수량' or '불량' in key:
+                        formatted_record['불량수량'] = int(value) if value else 0
+                    # 특이사항 필드 처리
+                    elif key == 'note' or key == '특이사항' or '특이' in key:
+                        formatted_record['특이사항'] = value
+                    else:
+                        formatted_record[key] = value
+                
+                # 필수 필드 채우기
+                for field in ['날짜', '작업자', '라인번호', '모델차수', '목표수량', '생산수량', '불량수량']:
+                    if field not in formatted_record:
+                        if field in ['목표수량', '생산수량', '불량수량']:
+                            formatted_record[field] = 0
+                        else:
+                            formatted_record[field] = ''
+                
+                formatted_records.append(formatted_record)
+            
+            st.session_state.production_data = formatted_records
+            
+        except Exception as e:
+            st.error(f"데이터 로드 중 오류: {str(e)}")
+            import traceback
+            st.write(f"[ERROR] 상세 오류: {traceback.format_exc()}")
+            
+            # 오류 발생 시 기존 방식으로 시도
+            from pages.production import load_production_data
+            st.session_state.production_data = load_production_data()
     
     total_records = len(st.session_state.production_data) if st.session_state.production_data else 0
     st.write(f"[DEBUG] 전체 데이터 수: {total_records}개")
@@ -49,9 +140,9 @@ def show_daily_report():
             sample_date = all_df['날짜'].iloc[0] if not all_df.empty else ""
             st.write(f"[DEBUG] 데이터 날짜 형식 샘플: {sample_date}, 타입: {type(sample_date)}")
         
-        # 날짜 필터링
-        df = all_df[all_df['날짜'] == selected_date_str].copy()
-        df_prev = all_df[all_df['날짜'] == previous_date.strftime('%Y-%m-%d')].copy()
+        # 날짜 필터링 개선
+        df = all_df[all_df['날짜'].astype(str).str.contains(selected_date_str)].copy()
+        df_prev = all_df[all_df['날짜'].astype(str).str.contains(previous_date.strftime('%Y-%m-%d'))].copy()
         
         st.write(f"[DEBUG] 필터링된 {selected_date_str} 날짜 데이터: {len(df)}개")
         st.write(f"[DEBUG] 필터링된 {previous_date.strftime('%Y-%m-%d')} 날짜 데이터: {len(df_prev)}개")
@@ -77,11 +168,32 @@ def show_daily_report():
                 '목표수량', '생산수량', '불량수량', '작업효율'
             ]
             
-            # 데이터프레임 표시 - 일반 dataframe 사용
-            st.dataframe(
+            # AgGrid 설정
+            gb = GridOptionsBuilder.from_dataframe(df[display_columns])
+            gb.configure_pagination(enabled=True, paginationAutoPageSize=False, paginationPageSize=100)
+            gb.configure_side_bar()
+            gb.configure_default_column(
+                groupable=True,
+                value=True,
+                enableRowGroup=True,
+                aggFunc='sum',
+                editable=False,
+                sorteable=True,
+                resizable=True,
+                filterable=True
+            )
+            grid_options = gb.build()
+            
+            # AgGrid 표시
+            AgGrid(
                 df[display_columns],
-                use_container_width=True,
-                hide_index=True
+                gridOptions=grid_options,
+                height=500,
+                width='100%',
+                data_return_mode='AS_INPUT',
+                update_mode='VALUE_CHANGED',
+                fit_columns_on_grid_load=False,
+                allow_unsafe_jscode=True
             )
             
             st.write(f"총 {len(df)}개 데이터 표시 중")
