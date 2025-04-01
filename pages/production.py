@@ -405,85 +405,93 @@ def view_production_data():
             with col5:
                 filter_submitted = st.form_submit_button("🔍 검색", use_container_width=True)
         
-        # 필터링
+        # 필터링 (안전하게 처리)
+        if not hasattr(st.session_state, 'production_data') or st.session_state.production_data is None:
+            st.session_state.production_data = load_production_data()
+        
+        records = st.session_state.production_data
         filtered_records = []
-        if filter_submitted or 'filtered_key' in st.session_state:
-            if filter_submitted:
-                str_start_date = start_date.strftime("%Y-%m-%d")
-                str_end_date = end_date.strftime("%Y-%m-%d")
-                
-                filter_key = f"{str_start_date}_{str_end_date}_{search_worker}"
-                st.session_state['filtered_key'] = filter_key
-                
-                records = st.session_state.production_data
-                for record in records:
-                    record_date = str(record.get('날짜', ''))
-                    if str_start_date <= record_date <= str_end_date:
-                        if not search_worker or search_worker.lower() in str(record.get('작업자', '')).lower():
-                            filtered_records.append(record)
-                
-                st.session_state['filtered_records'] = filtered_records
-            else:
-                if 'filtered_records' in st.session_state:
-                    filtered_records = st.session_state['filtered_records']
+        
+        # 필터 적용 여부에 따라 처리
+        if filter_submitted:
+            str_start_date = start_date.strftime("%Y-%m-%d")
+            str_end_date = end_date.strftime("%Y-%m-%d")
+            
+            filter_key = f"{str_start_date}_{str_end_date}_{search_worker}"
+            st.session_state['filtered_key'] = filter_key
+            
+            # 데이터 필터링
+            for record in records:
+                record_date = str(record.get('날짜', ''))
+                if str_start_date <= record_date <= str_end_date:
+                    if not search_worker or search_worker.lower() in str(record.get('작업자', '')).lower():
+                        filtered_records.append(record)
+            
+            st.session_state['filtered_records'] = filtered_records
+        elif 'filtered_key' in st.session_state and 'filtered_records' in st.session_state:
+            filtered_records = st.session_state['filtered_records']
         else:
             # 필터 미적용 시 모든 데이터 표시
-            filtered_records = st.session_state.production_data
+            filtered_records = records
         
         # 결과 표시
-        if len(filtered_records) == 0:
+        record_count = len(filtered_records) if filtered_records else 0
+        if record_count == 0:
             st.warning("조건에 맞는 데이터가 없습니다.")
-        else:
-            st.info(f"총 {len(filtered_records)}개의 데이터가 검색되었습니다.")
+            return
+        
+        st.info(f"총 {record_count}개의 데이터가 검색되었습니다.")
+        
+        # DataFrame 생성 및 표시
+        df = pd.DataFrame(filtered_records)
+        
+        if df.empty:
+            st.warning("표시할 데이터가 없습니다.")
+            return
             
-            # DataFrame 생성 및 표시
-            if len(filtered_records) > 0:
-                df = pd.DataFrame(filtered_records)
+        # 매우 기본적인 AgGrid 설정
+        gb = GridOptionsBuilder.from_dataframe(df)
+        gb.configure_pagination(paginationPageSize=10)
+        gb.configure_default_column(sortable=True)
+        gb.configure_selection(selection_mode='single')
+        grid_options = gb.build()
+        
+        # 간소화된 AgGrid 호출
+        grid_result = AgGrid(
+            df,
+            gridOptions=grid_options,
+            enable_enterprise_modules=False,
+            update_mode=GridUpdateMode.SELECTION_CHANGED,
+            fit_columns_on_grid_load=True,
+            height=400
+        )
+        
+        # 통계 계산 및 표시
+        if not df.empty and '목표수량' in df.columns and '생산수량' in df.columns:
+            try:
+                st.markdown("### 📊 통계")
+                col1, col2, col3 = st.columns(3)
                 
-                # Community 버전 전용 설정 (최소한의 옵션만 사용)
-                gb = GridOptionsBuilder.from_dataframe(df)
-                gb.configure_pagination(paginationPageSize=10)
-                gb.configure_default_column(sortable=True)
+                with col1:
+                    total_target = df['목표수량'].sum()
+                    st.metric("총 목표수량", f"{total_target:,}")
                 
-                # 선택 모드는 단순화
-                gb.configure_selection(selection_mode='single')
-                grid_options = gb.build()
+                with col2:
+                    total_production = df['생산수량'].sum()
+                    st.metric("총 생산수량", f"{total_production:,}")
                 
-                # 기본 옵션만 사용하여 표시
-                response = AgGrid(
-                    df,
-                    gridOptions=grid_options,
-                    enable_enterprise_modules=False,
-                    update_mode=GridUpdateMode.SELECTION_CHANGED,
-                    fit_columns_on_grid_load=True,
-                    height=400
-                )
-                
-                # 통계 계산 및 표시
-                try:
-                    if len(df) > 0:
-                        st.markdown("### 📊 통계")
-                        col1, col2, col3 = st.columns(3)
-                        
-                        with col1:
-                            total_target = df['목표수량'].sum() if '목표수량' in df.columns else 0
-                            st.metric("총 목표수량", f"{total_target:,}")
-                        
-                        with col2:
-                            total_production = df['생산수량'].sum() if '생산수량' in df.columns else 0
-                            st.metric("총 생산수량", f"{total_production:,}")
-                        
-                        with col3:
-                            if total_target > 0:
-                                achievement_rate = (total_production / total_target) * 100
-                                st.metric("달성률", f"{achievement_rate:.1f}%")
-                except Exception as e:
-                    st.warning(f"통계 계산 중 오류가 발생했습니다: {str(e)}")
-                
-                # 선택된 행 처리
-                if 'selected_rows' in response and len(response['selected_rows']) > 0:
-                    with st.expander("📄 선택한 데이터 상세 정보", expanded=True):
-                        st.json(response['selected_rows'][0])
+                with col3:
+                    if total_target > 0:
+                        achievement_rate = (total_production / total_target) * 100
+                        st.metric("달성률", f"{achievement_rate:.1f}%")
+            except Exception as e:
+                st.warning(f"통계 계산 중 오류가 발생했습니다: {str(e)}")
+        
+        # 선택된 행 처리
+        selected_rows = grid_result.get('selected_rows', [])
+        if selected_rows and len(selected_rows) > 0:
+            with st.expander("📄 선택한 데이터 상세 정보", expanded=True):
+                st.json(selected_rows[0])
     
     except Exception as e:
         st.error(f"데이터 처리 중 오류가 발생했습니다: {str(e)}")
