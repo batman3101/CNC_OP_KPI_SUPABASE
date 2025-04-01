@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
+from st_aggrid import AgGrid, GridOptionsBuilder
 
 def calculate_change_rate(current, previous):
     if previous == 0:
@@ -56,11 +57,34 @@ def show_daily_report():
             ]
             
             # 데이터프레임 표시
-            st.dataframe(
-                df[display_columns],
-                use_container_width=True,
-                hide_index=True
+            # AgGrid 옵션 설정
+            gb = GridOptionsBuilder.from_dataframe(df[display_columns])
+            gb.configure_pagination(enabled=True, paginationAutoPageSize=False, paginationPageSize=50)
+            gb.configure_side_bar()
+            gb.configure_default_column(
+                groupable=True, 
+                value=True, 
+                enableRowGroup=True, 
+                aggFunc='sum',
+                editable=False,
+                sorteable=True,
+                resizable=True,
+                filterable=True
             )
+            grid_options = gb.build()
+            
+            # AgGrid 표시
+            AgGrid(
+                df[display_columns],
+                gridOptions=grid_options,
+                height=400,
+                width='100%',
+                data_return_mode='AS_INPUT',
+                update_mode='MODEL_CHANGED',
+                fit_columns_on_grid_load=False,
+                allow_unsafe_jscode=True
+            )
+            
             st.write(f"총 {len(df)}개 데이터 표시 중")
         
         # 통계 계산 시에도 특이사항 제외
