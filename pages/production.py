@@ -11,6 +11,12 @@ from st_aggrid import GridUpdateMode, DataReturnMode
 from utils.local_storage import LocalStorage
 import utils.common as common
 
+# 프로젝트 루트 디렉토리를 path에 추가
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(current_dir)
+if project_root not in sys.path:
+    sys.path.append(project_root)
+
 def save_production_data(data):
     try:
         # Supabase에 데이터 저장
@@ -97,7 +103,10 @@ def show_production_management():
 
 def edit_production_data():
     st.subheader("실적 수정")
-    storage = LocalStorage()
+    
+    # LocalStorage 대신 Supabase DB 데이터 사용
+    if 'production_data' not in st.session_state or st.session_state.production_data is None:
+        st.session_state.production_data = load_production_data()
     
     with st.form("필터 조건", clear_on_submit=False):
         col1, col2, col3 = st.columns(3)
@@ -111,18 +120,60 @@ def edit_production_data():
         filter_submitted = st.form_submit_button("필터 적용")
     
     if filter_submitted or 'production_filtered_df' in st.session_state:
-        records = storage.load_production_records()
+        # records = storage.load_production_records()  # 이전 코드
+        records = st.session_state.production_data  # Supabase에서 가져온 데이터 사용
+        
+        # 로그 추가
+        st.write(f"[DEBUG] 전체 레코드 수: {len(records)}개")
+        if len(records) > 0:
+            st.write(f"[DEBUG] 데이터 샘플: {records[0]}")
+            st.write(f"[DEBUG] 필드명: {list(records[0].keys())}")
         
         # 날짜 변환
         str_start_date = start_date.strftime("%Y-%m-%d")
         str_end_date = end_date.strftime("%Y-%m-%d")
         
+        # 필터링 로직 개선 - 다양한 필드명에 대응
         filtered_records = []
+        date_field = None
+        worker_field = None
+        
+        # 필드명 자동 감지
+        if len(records) > 0:
+            fields = list(records[0].keys())
+            for field in fields:
+                if '날짜' in field or 'date' in field.lower():
+                    date_field = field
+                if '작업자' in field or 'worker' in field.lower():
+                    worker_field = field
+        
+        if not date_field:
+            date_field = 'date' if 'date' in records[0] else '날짜'
+        if not worker_field:
+            worker_field = 'worker' if 'worker' in records[0] else '작업자'
+        
+        # 로그 추가
+        st.write(f"[DEBUG] 사용할 날짜 필드: {date_field}")
+        st.write(f"[DEBUG] 사용할 작업자 필드: {worker_field}")
+        
         for record in records:
-            record_date = record.get('생산일자', '')
-            if str_start_date <= record_date <= str_end_date:
-                if not search_worker or search_worker.lower() in record.get('작업자', '').lower():
+            # 날짜 필드가 있는지 확인
+            if date_field not in record:
+                continue
+                
+            record_date = str(record.get(date_field, ''))
+            
+            # 날짜 필터링 - 포함 관계로 변경 (contains)
+            if str_start_date in record_date or str_end_date in record_date or (
+                str_start_date <= record_date <= str_end_date):
+                
+                # 작업자 필터링
+                if not search_worker:
                     filtered_records.append(record)
+                elif worker_field in record and search_worker.lower() in str(record.get(worker_field, '')).lower():
+                    filtered_records.append(record)
+        
+        st.write(f"[DEBUG] 필터링된 레코드 수: {len(filtered_records)}개")
         
         if not filtered_records:
             st.warning("조건에 맞는 데이터가 없습니다.")
@@ -207,13 +258,13 @@ def edit_production_data():
                             st.session_state['production_filtered_records'][i] = updated_record
                     
                     # 모든 레코드 업데이트
-                    all_records = storage.load_production_records()
+                    all_records = st.session_state.production_data
                     for i, record in enumerate(all_records):
                         if record.get('id') == record_id:
                             all_records[i] = updated_record
                     
                     # 데이터 저장
-                    storage.save_production_records(all_records)
+                    save_production_data(updated_record)
                     st.success("실적 데이터가 성공적으로 수정되었습니다.")
                     
                     # 세션 상태 업데이트
@@ -227,11 +278,10 @@ def edit_production_data():
                     record_id = selected_row.get('id')
                     
                     # 데이터 삭제
-                    all_records = storage.load_production_records()
-                    updated_records = [r for r in all_records if r.get('id') != record_id]
+                    updated_records = [r for r in st.session_state.production_data if r.get('id') != record_id]
                     
                     # 데이터 저장
-                    storage.save_production_records(updated_records)
+                    save_production_data(updated_records[-1])
                     st.success("실적 데이터가 성공적으로 삭제되었습니다.")
                     
                     # 세션 상태 초기화
@@ -239,6 +289,7 @@ def edit_production_data():
                     st.session_state.pop('production_filtered_records', None)
                     st.session_state.pop('selected_production_record', None)
                     st.session_state.pop('delete_confirmation', None)
+                    st.session_state.production_data = updated_records
                     st.experimental_rerun()
                 else:
                     st.session_state['delete_confirmation'] = True
@@ -300,17 +351,17 @@ def add_production_data():
             }
             
             # 데이터 저장
-            storage = LocalStorage()
-            records = storage.load_production_records()
-            records.append(record)
-            storage.save_production_records(records)
+            save_production_data(record)
             
             st.success("생산 실적이 저장되었습니다.")
             st.experimental_rerun()
 
 def view_production_data():
     st.subheader("실적 조회")
-    storage = LocalStorage()
+    
+    # LocalStorage 대신 Supabase DB 데이터 사용
+    if 'production_data' not in st.session_state or st.session_state.production_data is None:
+        st.session_state.production_data = load_production_data()
     
     with st.form("조회 필터", clear_on_submit=False):
         col1, col2, col3 = st.columns(3)
@@ -324,32 +375,99 @@ def view_production_data():
         filter_submitted = st.form_submit_button("조회")
     
     if filter_submitted or 'view_filtered_df' in st.session_state:
-        records = storage.load_production_records()
+        # records = storage.load_production_records()  # 이전 코드
+        records = st.session_state.production_data  # Supabase에서 가져온 데이터 사용
+        
+        # 로그 추가
+        st.write(f"[DEBUG] 전체 레코드 수: {len(records)}개")
+        if len(records) > 0:
+            st.write(f"[DEBUG] 데이터 샘플: {records[0]}")
+            st.write(f"[DEBUG] 필드명: {list(records[0].keys())}")
         
         # 날짜 변환
         str_start_date = start_date.strftime("%Y-%m-%d")
         str_end_date = end_date.strftime("%Y-%m-%d")
         
+        # 필터링 로직 개선 - 다양한 필드명에 대응
         filtered_records = []
+        date_field = None
+        worker_field = None
+        model_field = None
+        line_field = None
+        
+        # 필드명 자동 감지
+        if len(records) > 0:
+            fields = list(records[0].keys())
+            for field in fields:
+                if '날짜' in field or 'date' in field.lower():
+                    date_field = field
+                if '작업자' in field or 'worker' in field.lower():
+                    worker_field = field
+                if '모델' in field or 'model' in field.lower():
+                    model_field = field
+                if '라인' in field or 'line' in field.lower():
+                    line_field = field
+        
+        if not date_field:
+            date_field = 'date' if 'date' in records[0] else '날짜'
+        if not worker_field:
+            worker_field = 'worker' if 'worker' in records[0] else '작업자'
+        if not model_field:
+            model_field = 'model' if 'model' in records[0] else '모델차수'
+        if not line_field:
+            line_field = 'line_number' if 'line_number' in records[0] else '라인번호'
+        
+        # 로그 추가
+        st.write(f"[DEBUG] 사용할 날짜 필드: {date_field}")
+        st.write(f"[DEBUG] 사용할 작업자 필드: {worker_field}")
+        st.write(f"[DEBUG] 사용할 모델 필드: {model_field}")
+        st.write(f"[DEBUG] 사용할 라인 필드: {line_field}")
+        
         for record in records:
-            record_date = record.get('생산일자', '')
-            if str_start_date <= record_date <= str_end_date:
+            # 날짜 필드가 있는지 확인
+            if date_field not in record:
+                continue
+                
+            record_date = str(record.get(date_field, ''))
+            
+            # 날짜 필터링 - 포함 관계로 변경 (contains)
+            if str_start_date in record_date or str_end_date in record_date or (
+                str_start_date <= record_date <= str_end_date):
+                
                 # 검색어 필터링
                 if not search_term:
                     filtered_records.append(record)
                 else:
                     search_term_lower = search_term.lower()
-                    if (search_term_lower in record.get('작업자', '').lower() or
-                        search_term_lower in record.get('모델명', '').lower() or
-                        search_term_lower in record.get('라인', '').lower()):
+                    if (worker_field in record and search_term_lower in str(record.get(worker_field, '')).lower()) or \
+                       (model_field in record and search_term_lower in str(record.get(model_field, '')).lower()) or \
+                       (line_field in record and search_term_lower in str(record.get(line_field, '')).lower()):
                         filtered_records.append(record)
+        
+        st.write(f"[DEBUG] 필터링된 레코드 수: {len(filtered_records)}개")
         
         if not filtered_records:
             st.warning("조건에 맞는 데이터가 없습니다.")
             return
         
-        # 필터링된 DataFrame 생성
+        # 필터링된 DataFrame 생성 - 필드명 수정
         filtered_df = pd.DataFrame(filtered_records)
+        
+        # 필드명 맵핑 (필요한 경우)
+        column_mapping = {}
+        if date_field != '생산일자':
+            column_mapping[date_field] = '생산일자'
+        if worker_field != '작업자':
+            column_mapping[worker_field] = '작업자'
+        if model_field != '모델명':
+            column_mapping[model_field] = '모델명'
+        if line_field != '라인':
+            column_mapping[line_field] = '라인'
+        
+        # 필드명 변경
+        if column_mapping:
+            filtered_df = filtered_df.rename(columns=column_mapping)
+        
         st.session_state['view_filtered_df'] = filtered_df
         
         st.info(f"총 {len(filtered_records)}개의 데이터가 검색되었습니다.")
