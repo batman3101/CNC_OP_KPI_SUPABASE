@@ -340,6 +340,8 @@ def edit_production_data():
                                     st.error("데이터 삭제 중 오류가 발생했습니다.")
                         except Exception as e:
                             st.error(f"데이터 삭제 중 오류: {str(e)}")
+                            import traceback
+                            st.error(f"상세 오류: {traceback.format_exc()}")
         
         except Exception as e:
             st.error(f"데이터 처리 중 오류가 발생했습니다: {str(e)}")
