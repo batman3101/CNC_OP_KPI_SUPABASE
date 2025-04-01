@@ -510,18 +510,18 @@ def display_detailed_data(df):
         with col1:
             if st.button("◀️ 이전", key="detailed_prev", disabled=st.session_state.detailed_page_number <= 1):
                 st.session_state.detailed_page_number -= 1
-                st.experimental_rerun()
+                st.rerun()
         with col2:
             if st.button("다음 ▶️", key="detailed_next", disabled=st.session_state.detailed_page_number >= total_pages):
                 st.session_state.detailed_page_number += 1
-                st.experimental_rerun()
+                st.rerun()
         with col3:
             st.write(f"페이지: {st.session_state.detailed_page_number}/{total_pages}")
         with col4:
             new_page = st.number_input("페이지 이동", min_value=1, max_value=total_pages, value=st.session_state.detailed_page_number, step=1, key="detailed_page_input")
             if new_page != st.session_state.detailed_page_number:
                 st.session_state.detailed_page_number = new_page
-                st.experimental_rerun()
+                st.rerun()
         
         # 상세 레코드 선택 기능
         st.markdown("### 🔍 레코드 선택")
@@ -584,18 +584,18 @@ def display_efficiency_analysis(df):
         with col1:
             if st.button("◀️ 이전", key="efficiency_prev", disabled=st.session_state.efficiency_page_number <= 1):
                 st.session_state.efficiency_page_number -= 1
-                st.experimental_rerun()
+                st.rerun()
         with col2:
             if st.button("다음 ▶️", key="efficiency_next", disabled=st.session_state.efficiency_page_number >= total_pages):
                 st.session_state.efficiency_page_number += 1
-                st.experimental_rerun()
+                st.rerun()
         with col3:
             st.write(f"페이지: {st.session_state.efficiency_page_number}/{total_pages}")
         with col4:
             new_page = st.number_input("페이지 이동", min_value=1, max_value=total_pages, value=st.session_state.efficiency_page_number, step=1, key="efficiency_page_input")
             if new_page != st.session_state.efficiency_page_number:
                 st.session_state.efficiency_page_number = new_page
-                st.experimental_rerun()
+                st.rerun()
         
         # 달성률 및 불량률 시각화
         st.markdown("### 📊 작업자별 달성률 및 불량률")
