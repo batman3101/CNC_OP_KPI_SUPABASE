@@ -40,11 +40,11 @@ def show_daily_report():
     previous_date = selected_date - timedelta(days=1)
     
     # 직접 Supabase에서 데이터 조회
-    st.write(f"[DEBUG] 선택한 날짜: {selected_date.strftime('%Y-%m-%d')}")
+    print(f"[DEBUG] 선택한 날짜: {selected_date.strftime('%Y-%m-%d')}")
     
     # 세션 상태에 데이터가 있는지 확인
     if 'production_data' not in st.session_state or st.session_state.production_data is None:
-        st.write("[DEBUG] 세션에 production_data 없음, 새로 로드합니다")
+        print("[DEBUG] 세션에 production_data 없음, 새로 로드합니다")
         
         # 캐시 무효화 후 직접 데이터 로드
         st.session_state.db._invalidate_cache()
@@ -119,14 +119,14 @@ def show_daily_report():
         except Exception as e:
             st.error(f"데이터 로드 중 오류: {str(e)}")
             import traceback
-            st.write(f"[ERROR] 상세 오류: {traceback.format_exc()}")
+            print(f"[ERROR] 상세 오류: {traceback.format_exc()}")
             
             # 오류 발생 시 기존 방식으로 시도
             from pages.production import load_production_data
             st.session_state.production_data = load_production_data()
     
     total_records = len(st.session_state.production_data) if st.session_state.production_data else 0
-    st.write(f"[DEBUG] 전체 데이터 수: {total_records}개")
+    print(f"[DEBUG] 전체 데이터 수: {total_records}개")
     
     # 날짜 형식을 문자열로 변환
     selected_date_str = selected_date.strftime('%Y-%m-%d')
@@ -138,14 +138,14 @@ def show_daily_report():
         # 데이터 형식 확인
         if '날짜' in all_df.columns:
             sample_date = all_df['날짜'].iloc[0] if not all_df.empty else ""
-            st.write(f"[DEBUG] 데이터 날짜 형식 샘플: {sample_date}, 타입: {type(sample_date)}")
+            print(f"[DEBUG] 데이터 날짜 형식 샘플: {sample_date}, 타입: {type(sample_date)}")
         
         # 날짜 필터링 개선
         df = all_df[all_df['날짜'].astype(str).str.contains(selected_date_str)].copy()
         df_prev = all_df[all_df['날짜'].astype(str).str.contains(previous_date.strftime('%Y-%m-%d'))].copy()
         
-        st.write(f"[DEBUG] 필터링된 {selected_date_str} 날짜 데이터: {len(df)}개")
-        st.write(f"[DEBUG] 필터링된 {previous_date.strftime('%Y-%m-%d')} 날짜 데이터: {len(df_prev)}개")
+        print(f"[DEBUG] 필터링된 {selected_date_str} 날짜 데이터: {len(df)}개")
+        print(f"[DEBUG] 필터링된 {previous_date.strftime('%Y-%m-%d')} 날짜 데이터: {len(df_prev)}개")
     else:
         df = pd.DataFrame()
         df_prev = pd.DataFrame()

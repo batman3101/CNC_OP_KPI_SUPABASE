@@ -123,11 +123,11 @@ def edit_production_data():
         # records = storage.load_production_records()  # 이전 코드
         records = st.session_state.production_data  # Supabase에서 가져온 데이터 사용
         
-        # 로그 추가
-        st.write(f"[DEBUG] 전체 레코드 수: {len(records)}개")
+        # 로그 추가 - 콘솔에만 출력하도록 변경
+        print(f"[DEBUG] 전체 레코드 수: {len(records)}개")
         if len(records) > 0:
-            st.write(f"[DEBUG] 데이터 샘플: {records[0]}")
-            st.write(f"[DEBUG] 필드명: {list(records[0].keys())}")
+            print(f"[DEBUG] 데이터 샘플: {records[0]}")
+            print(f"[DEBUG] 필드명: {list(records[0].keys())}")
         
         # 날짜 변환
         str_start_date = start_date.strftime("%Y-%m-%d")
@@ -152,9 +152,9 @@ def edit_production_data():
         if not worker_field:
             worker_field = 'worker' if 'worker' in records[0] else '작업자'
         
-        # 로그 추가
-        st.write(f"[DEBUG] 사용할 날짜 필드: {date_field}")
-        st.write(f"[DEBUG] 사용할 작업자 필드: {worker_field}")
+        # 로그 추가 - 콘솔에만 출력하도록 변경
+        print(f"[DEBUG] 사용할 날짜 필드: {date_field}")
+        print(f"[DEBUG] 사용할 작업자 필드: {worker_field}")
         
         for record in records:
             # 날짜 필드가 있는지 확인
@@ -173,7 +173,7 @@ def edit_production_data():
                 elif worker_field in record and search_worker.lower() in str(record.get(worker_field, '')).lower():
                     filtered_records.append(record)
         
-        st.write(f"[DEBUG] 필터링된 레코드 수: {len(filtered_records)}개")
+        print(f"[DEBUG] 필터링된 레코드 수: {len(filtered_records)}개")
         
         if not filtered_records:
             st.warning("조건에 맞는 데이터가 없습니다.")
@@ -378,11 +378,11 @@ def view_production_data():
         # records = storage.load_production_records()  # 이전 코드
         records = st.session_state.production_data  # Supabase에서 가져온 데이터 사용
         
-        # 로그 추가
-        st.write(f"[DEBUG] 전체 레코드 수: {len(records)}개")
+        # 로그 추가 - 콘솔에만 출력하도록 변경
+        print(f"[DEBUG] 전체 레코드 수: {len(records)}개")
         if len(records) > 0:
-            st.write(f"[DEBUG] 데이터 샘플: {records[0]}")
-            st.write(f"[DEBUG] 필드명: {list(records[0].keys())}")
+            print(f"[DEBUG] 데이터 샘플: {records[0]}")
+            print(f"[DEBUG] 필드명: {list(records[0].keys())}")
         
         # 날짜 변환
         str_start_date = start_date.strftime("%Y-%m-%d")
@@ -417,11 +417,11 @@ def view_production_data():
         if not line_field:
             line_field = 'line_number' if 'line_number' in records[0] else '라인번호'
         
-        # 로그 추가
-        st.write(f"[DEBUG] 사용할 날짜 필드: {date_field}")
-        st.write(f"[DEBUG] 사용할 작업자 필드: {worker_field}")
-        st.write(f"[DEBUG] 사용할 모델 필드: {model_field}")
-        st.write(f"[DEBUG] 사용할 라인 필드: {line_field}")
+        # 로그 추가 - 콘솔에만 출력하도록 변경
+        print(f"[DEBUG] 사용할 날짜 필드: {date_field}")
+        print(f"[DEBUG] 사용할 작업자 필드: {worker_field}")
+        print(f"[DEBUG] 사용할 모델 필드: {model_field}")
+        print(f"[DEBUG] 사용할 라인 필드: {line_field}")
         
         for record in records:
             # 날짜 필드가 있는지 확인
@@ -444,7 +444,7 @@ def view_production_data():
                        (line_field in record and search_term_lower in str(record.get(line_field, '')).lower()):
                         filtered_records.append(record)
         
-        st.write(f"[DEBUG] 필터링된 레코드 수: {len(filtered_records)}개")
+        print(f"[DEBUG] 필터링된 레코드 수: {len(filtered_records)}개")
         
         if not filtered_records:
             st.warning("조건에 맞는 데이터가 없습니다.")
