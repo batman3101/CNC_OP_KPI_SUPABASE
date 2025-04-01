@@ -6,7 +6,8 @@ from datetime import datetime
 from dotenv import load_dotenv
 import pandas as pd
 import json
-from st_aggrid import AgGrid, GridOptionsBuilder
+from utils.local_storage import LocalStorage
+from utils.supabase_db import SupabaseDB
 
 # config_local.py가 있으면 관리자 계정 정보 로드, 없으면 기본값 사용
 try:
@@ -458,44 +459,3 @@ def show_data_sync():
         # 캐시 초기화
         st.session_state.db._invalidate_cache()
         st.session_state.production_data = None
-
-        # 그리드 옵션 설정
-        builder = GridOptionsBuilder.from_dataframe(df)
-        builder.configure_pagination(enabled=True, paginationAutoPageSize=False, paginationPageSize=1000)
-        builder.configure_selection()  # 행 선택 기능 추가
-        builder.configure_side_bar()  # 측면 설정 바 표시
-        builder.configure_default_column(
-            editable=True,          # 셀 편집 가능
-            groupable=True,         # 그룹화 기능
-            sorteable=True,         # 정렬 기능
-            filterable=True,        # 필터 기능
-            resizable=True,         # 열 크기 조절
-            autoHeight=True,        # 자동 높이 조절
-            wrapText=True           # 텍스트 줄바꿈
-        )
-
-        # 특정 열에 사용자 정의 설정 적용
-        builder.configure_column(
-            "작업자", 
-            header_name="작업자명",      # 헤더 이름 변경
-            pinned="left",              # 열 고정 위치
-            width=150                   # 열 너비
-        )
-
-        grid_options = builder.build()
-
-        # 그리드 표시
-        grid_response = AgGrid(
-            df, 
-            gridOptions=grid_options,
-            height=500, 
-            width='100%',
-            data_return_mode='AS_INPUT',
-            update_mode='MODEL_CHANGED'
-        )
-
-        # 선택된 행 가져오기
-        selected_rows = grid_response['selected_rows']
-        if selected_rows:
-            st.write("선택된 행:", selected_rows)
- 

@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
-from st_aggrid import AgGrid, GridOptionsBuilder
 
 def calculate_change_rate(current, previous):
     if previous == 0:
@@ -26,22 +25,41 @@ def show_daily_report():
     # 전일 날짜 계산
     previous_date = selected_date - timedelta(days=1)
     
-    # 데이터 조회
-    current_records = st.session_state.db.get_production_records(
-        start_date=selected_date.strftime('%Y-%m-%d'),
-        end_date=selected_date.strftime('%Y-%m-%d')
-    )
+    # 데이터 조회 - 로그 추가
+    st.write(f"[DEBUG] 선택한 날짜: {selected_date.strftime('%Y-%m-%d')}")
     
-    previous_records = st.session_state.db.get_production_records(
-        start_date=previous_date.strftime('%Y-%m-%d'),
-        end_date=previous_date.strftime('%Y-%m-%d')
-    )
+    # 세션 상태에 데이터가 있는지 확인
+    if 'production_data' not in st.session_state or st.session_state.production_data is None:
+        st.write("[DEBUG] 세션에 production_data 없음, 새로 로드합니다")
+        from pages.production import load_production_data
+        st.session_state.production_data = load_production_data()
     
-    if current_records:
-        # DataFrame 생성
-        df = pd.DataFrame(current_records)
-        df_prev = pd.DataFrame(previous_records) if previous_records else pd.DataFrame()
+    total_records = len(st.session_state.production_data) if st.session_state.production_data else 0
+    st.write(f"[DEBUG] 전체 데이터 수: {total_records}개")
+    
+    # 날짜 형식을 문자열로 변환
+    selected_date_str = selected_date.strftime('%Y-%m-%d')
+    
+    # 전체 데이터에서 해당 날짜 데이터 필터링
+    if st.session_state.production_data:
+        all_df = pd.DataFrame(st.session_state.production_data)
         
+        # 데이터 형식 확인
+        if '날짜' in all_df.columns:
+            sample_date = all_df['날짜'].iloc[0] if not all_df.empty else ""
+            st.write(f"[DEBUG] 데이터 날짜 형식 샘플: {sample_date}, 타입: {type(sample_date)}")
+        
+        # 날짜 필터링
+        df = all_df[all_df['날짜'] == selected_date_str].copy()
+        df_prev = all_df[all_df['날짜'] == previous_date.strftime('%Y-%m-%d')].copy()
+        
+        st.write(f"[DEBUG] 필터링된 {selected_date_str} 날짜 데이터: {len(df)}개")
+        st.write(f"[DEBUG] 필터링된 {previous_date.strftime('%Y-%m-%d')} 날짜 데이터: {len(df_prev)}개")
+    else:
+        df = pd.DataFrame()
+        df_prev = pd.DataFrame()
+    
+    if not df.empty:
         # 총 데이터 수 표시
         st.info(f"해당 날짜({selected_date.strftime('%Y-%m-%d')})의 총 데이터: {len(df)}개")
         
@@ -59,32 +77,11 @@ def show_daily_report():
                 '목표수량', '생산수량', '불량수량', '작업효율'
             ]
             
-            # 데이터프레임 표시
-            # AgGrid 설정
-            gb = GridOptionsBuilder.from_dataframe(df[display_columns])
-            gb.configure_pagination(enabled=True, paginationAutoPageSize=False, paginationPageSize=50)
-            gb.configure_side_bar()
-            gb.configure_default_column(
-                groupable=True, 
-                value=True, 
-                enableRowGroup=True, 
-                aggFunc='sum',
-                editable=False,
-                sorteable=True,
-                resizable=True,
-                filterable=True
-            )
-            grid_options = gb.build()
-            
-            AgGrid(
+            # 데이터프레임 표시 - 일반 dataframe 사용
+            st.dataframe(
                 df[display_columns],
-                gridOptions=grid_options,
-                height=500,
-                width='100%',
-                data_return_mode='AS_INPUT',
-                update_mode='MODEL_CHANGED',
-                fit_columns_on_grid_load=False,
-                allow_unsafe_jscode=True
+                use_container_width=True,
+                hide_index=True
             )
             
             st.write(f"총 {len(df)}개 데이터 표시 중")
