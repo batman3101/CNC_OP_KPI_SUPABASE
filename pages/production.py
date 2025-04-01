@@ -106,10 +106,8 @@ def show_production_management():
 def edit_production_data():
     st.subheader("실적 수정")
     
-    # 항상 새로운 데이터 로드
-    st.session_state.production_data = load_production_data()
-    
-    # 필터 UI
+    # 필터 UI를 컬럼으로 구성하여 더 깔끔하게 표시
+    st.markdown("### 🔍 데이터 검색")
     with st.form("필터 조건", clear_on_submit=False):
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -117,319 +115,188 @@ def edit_production_data():
         with col2:
             end_date = st.date_input("종료일", datetime.now().date())
         with col3:
-            search_worker = st.text_input("작업자 검색", "")
+            search_worker = st.text_input("작업자 검색")
         
-        filter_submitted = st.form_submit_button("필터 적용")
+        col4, col5 = st.columns([2, 1])
+        with col4:
+            st.markdown("") # 간격 조정용
+        with col5:
+            filter_submitted = st.form_submit_button("🔍 검색", use_container_width=True)
     
-    # 필터 적용 여부 또는 세션에 filtered_key가 있는지 확인
+    # 필터 적용 여부 확인
     if filter_submitted or 'filtered_key' in st.session_state:
         try:
-            # 필터링된 데이터를 담을 기본 변수
+            # 필터링된 데이터 준비
             filtered_records = []
             
-            # 필터 제출 시 새로 필터링
             if filter_submitted:
-                # 날짜 문자열 변환
                 str_start_date = start_date.strftime("%Y-%m-%d")
                 str_end_date = end_date.strftime("%Y-%m-%d")
                 
-                # 캐시를 위한 키 생성
+                # 캐시 키 생성
                 filter_key = f"{str_start_date}_{str_end_date}_{search_worker}"
                 st.session_state['filtered_key'] = filter_key
                 
-                # 필드명 자동 감지 (안전한 방식으로)
-                date_field = None
-                worker_field = None
-                
+                # 데이터 필터링
                 records = st.session_state.production_data
-                if records and len(records) > 0:
-                    sample_record = records[0]
-                    fields = list(sample_record.keys())
-                    
-                    # 필드명 자동 감지
-                    for field in fields:
-                        if '날짜' in field or 'date' in field.lower():
-                            date_field = field
-                        if '작업자' in field or 'worker' in field.lower():
-                            worker_field = field
-                    
-                    # 기본값 설정
-                    if not date_field:
-                        date_field = '날짜' if '날짜' in sample_record else 'date'
-                    if not worker_field:
-                        worker_field = '작업자' if '작업자' in sample_record else 'worker'
-                    
-                    # 필터링 실행
-                    for record in records:
-                        if date_field not in record:
-                            continue
-                            
-                        record_date = str(record.get(date_field, ''))
-                        
-                        # 날짜 필터링 (범위 내)
-                        if str_start_date <= record_date <= str_end_date:
-                            # 작업자 필터링
-                            if not search_worker or (
-                                worker_field in record and 
-                                search_worker.lower() in str(record.get(worker_field, '')).lower()
-                            ):
-                                filtered_records.append(record)
+                for record in records:
+                    record_date = str(record.get('날짜', ''))
+                    if str_start_date <= record_date <= str_end_date:
+                        if not search_worker or search_worker.lower() in str(record.get('작업자', '')).lower():
+                            filtered_records.append(record)
                 
-                # 세션 상태에 필터링된 결과 저장
                 st.session_state['filtered_records'] = filtered_records
             else:
-                # 기존 필터링 결과 사용
                 if 'filtered_records' in st.session_state:
                     filtered_records = st.session_state['filtered_records']
             
             # 필터링 결과 표시
-            num_records = len(filtered_records)
-            if num_records == 0:
+            if not filtered_records:
                 st.warning("조건에 맞는 데이터가 없습니다.")
-            else:
-                st.info(f"총 {num_records}개의 데이터가 검색되었습니다.")
+                return
+            
+            st.markdown("---")
+            st.markdown("### 📝 데이터 수정/삭제")
+            st.info(f"총 {len(filtered_records)}개의 데이터가 검색되었습니다. 수정할 데이터를 선택하세요.")
+            
+            # DataFrame 생성 및 AgGrid 표시
+            df = pd.DataFrame(filtered_records)
+            
+            gb = GridOptionsBuilder.from_dataframe(df)
+            gb.configure_pagination(enabled=True, paginationAutoPageSize=False, paginationPageSize=10)
+            gb.configure_default_column(
+                value=True, 
+                editable=False, 
+                sortable=True, 
+                resizable=True, 
+                filterable=True
+            )
+            gb.configure_selection(selection_mode='single')
+            grid_options = gb.build()
+            
+            grid_response = AgGrid(
+                df,
+                gridOptions=grid_options,
+                enable_enterprise_modules=False,
+                update_mode=GridUpdateMode.MODEL_CHANGED,
+                data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+                fit_columns_on_grid_load=True,
+                height=300
+            )
+            
+            # 선택된 행 처리
+            selected_rows = grid_response['selected_rows']
+            if selected_rows:
+                selected_row = selected_rows[0]
                 
-                # 안전하게 DataFrame 생성
-                try:
-                    df = pd.DataFrame(filtered_records)
-                    
-                    # AgGrid 설정
-                    gb = GridOptionsBuilder.from_dataframe(df)
-                    gb.configure_pagination(enabled=True, paginationAutoPageSize=False, paginationPageSize=50)
-                    
-                    # 기본 컬럼 설정 - Community 버전 호환
-                    gb.configure_default_column(
-                        value=True, 
-                        editable=False, 
-                        sortable=True, 
-                        resizable=True, 
-                        filterable=True
-                    )
-                    
-                    # 단순 선택 모드 설정
-                    gb.configure_selection(selection_mode='single')
-                    
-                    grid_options = gb.build()
-                    
-                    # 그리드 출력 - Community 버전 설정
-                    grid_response = AgGrid(
-                        df,
-                        gridOptions=grid_options,
-                        enable_enterprise_modules=False,
-                        update_mode=GridUpdateMode.MODEL_CHANGED,
-                        data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
-                        fit_columns_on_grid_load=True,
-                        height=400,
-                        allow_unsafe_jscode=False
-                    )
-                    
-                    # 선택된 행 확인 (선택 여부 안전하게 체크)
-                    selected_rows = grid_response['selected_rows']
-                    
-                    # 선택된 행이 있고 빈 리스트가 아닌 경우
-                    if selected_rows and len(selected_rows) > 0:
-                        selected_row = selected_rows[0]  # 첫 번째 선택된 행
+                st.markdown("---")
+                st.markdown("### ✏️ 선택된 데이터 수정")
+                
+                # 수정 폼
+                with st.form("실적_수정_폼"):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        edit_date = st.date_input(
+                            "생산일자",
+                            datetime.strptime(selected_row.get('날짜', datetime.now().strftime("%Y-%m-%d")), "%Y-%m-%d")
+                        )
                         
-                        st.subheader("선택된 실적 데이터 수정")
-                        
-                        # 마스터 데이터 로드 (드롭다운용)
+                        # 작업자 선택
                         workers = st.session_state.workers if 'workers' in st.session_state else []
-                        worker_names = [worker.get('이름', '') for worker in workers if '이름' in worker]
-                        if not worker_names:
-                            worker_names = [""]  # 비어있으면 기본값 제공
+                        worker_names = [w.get('이름', '') for w in workers if '이름' in w]
+                        current_worker = selected_row.get('작업자', '')
+                        worker_idx = worker_names.index(current_worker) if current_worker in worker_names else 0
+                        edit_worker = st.selectbox("작업자", worker_names, index=worker_idx)
                         
-                        line_numbers = list(set([worker.get('라인번호', '') for worker in workers if '라인번호' in worker and worker.get('라인번호', '')]))
-                        if not line_numbers:
-                            line_numbers = [""]  # 비어있으면 기본값 제공
+                        # 라인 선택
+                        line_numbers = list(set([w.get('라인번호', '') for w in workers if '라인번호' in w]))
+                        current_line = selected_row.get('라인번호', '')
+                        line_idx = line_numbers.index(current_line) if current_line in line_numbers else 0
+                        edit_line = st.selectbox("라인", line_numbers, index=line_idx)
                         
+                        # 모델 선택
                         models = st.session_state.models if 'models' in st.session_state else []
-                        model_names = list(set([model.get('모델명', '') for model in models if '모델명' in model and model.get('모델명', '')]))
-                        if not model_names:
-                            model_names = [""]  # 비어있으면 기본값 제공
-                        
-                        # 필드명 자동 감지 (안전하게)
-                        date_field = '날짜'
-                        model_field = '모델차수'
-                        line_field = '라인번호'
-                        
-                        # 선택된 행의 키 확인
-                        selected_keys = list(selected_row.keys())
-                        for key in selected_keys:
-                            if '날짜' in key or 'date' in key.lower():
-                                date_field = key
-                            if '모델' in key:
-                                model_field = key
-                            if '라인' in key:
-                                line_field = key
-                        
-                        with st.form("실적_수정_폼"):
-                            col1, col2 = st.columns(2)
+                        model_names = list(set([m.get('모델명', '') for m in models if '모델명' in m]))
+                        current_model = selected_row.get('모델차수', '')
+                        model_idx = model_names.index(current_model) if current_model in model_names else 0
+                        edit_model = st.selectbox("모델", model_names, index=model_idx)
+                    
+                    with col2:
+                        edit_target = st.number_input("목표수량", min_value=0, value=int(selected_row.get('목표수량', 0)))
+                        edit_production = st.number_input("생산수량", min_value=0, value=int(selected_row.get('생산수량', 0)))
+                        edit_defect = st.number_input("불량수량", min_value=0, value=int(selected_row.get('불량수량', 0)))
+                    
+                    col3, col4 = st.columns([3, 1])
+                    with col3:
+                        st.markdown("") # 간격 조정용
+                    with col4:
+                        submit_edit = st.form_submit_button("💾 수정 적용", use_container_width=True)
+                
+                if submit_edit:
+                    try:
+                        record_id = selected_row.get('id')
+                        if not record_id:
+                            st.error("레코드 ID를 찾을 수 없습니다.")
+                        else:
+                            # 수정할 데이터 준비
+                            updated_data = {
+                                'id': record_id,
+                                '날짜': edit_date.strftime("%Y-%m-%d"),
+                                '작업자': edit_worker,
+                                '라인번호': edit_line,
+                                '모델차수': edit_model,
+                                '목표수량': edit_target,
+                                '생산수량': edit_production,
+                                '불량수량': edit_defect
+                            }
                             
-                            with col1:
-                                # 날짜 필드 안전하게 처리
-                                try:
-                                    default_date = datetime.strptime(selected_row.get(date_field, ''), "%Y-%m-%d")
-                                except:
-                                    default_date = datetime.now()
-                                    
-                                edit_date = st.date_input("생산일자", default_date)
-                                
-                                # 작업자 선택 (안전하게)
-                                worker_val = selected_row.get('작업자', '')
-                                default_worker_idx = 0
-                                if worker_val in worker_names:
-                                    default_worker_idx = worker_names.index(worker_val)
-                                    
-                                edit_worker = st.selectbox("작업자", worker_names, index=default_worker_idx)
-                                
-                                # 모델 선택 (안전하게)
-                                model_val = selected_row.get(model_field, '')
-                                default_model_idx = 0
-                                if model_val in model_names:
-                                    default_model_idx = model_names.index(model_val)
-                                
-                                edit_model = st.selectbox("모델명", model_names, index=default_model_idx)
-                                
-                                # 라인 선택 (안전하게)
-                                line_val = selected_row.get(line_field, '')
-                                default_line_idx = 0
-                                if line_val in line_numbers:
-                                    default_line_idx = line_numbers.index(line_val)
-                                
-                                edit_line = st.selectbox("라인", line_numbers, index=default_line_idx)
+                            # 데이터베이스 업데이트
+                            if 'db' not in st.session_state:
+                                st.session_state.db = SupabaseDB()
                             
-                            with col2:
-                                # 수량 입력 (기본값 안전하게 처리)
-                                try:
-                                    target_val = int(selected_row.get('목표수량', 0))
-                                except:
-                                    target_val = 0
-                                    
-                                try:
-                                    prod_val = int(selected_row.get('생산수량', 0))
-                                except:
-                                    prod_val = 0
-                                    
-                                try:
-                                    defect_val = int(selected_row.get('불량수량', 0))
-                                except:
-                                    defect_val = 0
-                                    
-                                edit_target = st.number_input("목표수량", min_value=0, value=target_val)
-                                edit_production = st.number_input("생산수량", min_value=0, value=prod_val)
-                                edit_defect = st.number_input("불량수량", min_value=0, value=defect_val)
+                            success = st.session_state.db.update_production_record(record_id, updated_data)
                             
-                            submit_edit = st.form_submit_button("수정 적용")
-                        
-                        # 폼 제출 처리
-                        if submit_edit:
-                            # 레코드 ID 확인
+                            if success:
+                                st.success("✅ 데이터가 성공적으로 수정되었습니다.")
+                                # 세션 상태 초기화 및 데이터 리로드
+                                st.session_state.pop('production_data', None)
+                                st.session_state.production_data = load_production_data()
+                                st.experimental_rerun()
+                            else:
+                                st.error("데이터 저장 중 오류가 발생했습니다.")
+                    except Exception as e:
+                        st.error(f"데이터 수정 중 오류: {str(e)}")
+                
+                # 삭제 기능
+                st.markdown("---")
+                st.markdown("### ❌ 데이터 삭제")
+                
+                col5, col6 = st.columns([3, 1])
+                with col5:
+                    delete_confirm = st.checkbox("이 데이터를 삭제하시겠습니까?")
+                with col6:
+                    if delete_confirm and st.button("🗑️ 삭제", use_container_width=True):
+                        try:
                             record_id = selected_row.get('id')
                             if not record_id:
                                 st.error("레코드 ID를 찾을 수 없습니다.")
                             else:
-                                # 수정된 데이터 준비
-                                updated_data = {
-                                    'id': record_id,
-                                    date_field: edit_date.strftime("%Y-%m-%d"),
-                                    '작업자': edit_worker,
-                                    model_field: edit_model,
-                                    line_field: edit_line,
-                                    '목표수량': int(edit_target),
-                                    '생산수량': int(edit_production),
-                                    '불량수량': int(edit_defect)
-                                }
-                                
-                                # 기존 레코드의 다른 필드 유지
-                                for key, value in selected_row.items():
-                                    if key not in updated_data:
-                                        updated_data[key] = value
-                                
-                                # 데이터베이스 객체 확보
                                 if 'db' not in st.session_state:
                                     st.session_state.db = SupabaseDB()
                                 
-                                # 데이터 업데이트
-                                try:
-                                    success = st.session_state.db.update_production_record(record_id, updated_data)
-                                    
-                                    if success:
-                                        st.success("데이터가 성공적으로 수정되었습니다.")
-                                        
-                                        # 필요한 세션 상태 초기화
-                                        st.session_state.pop('production_data', None)
-                                        
-                                        # 데이터 다시 로드하고 필터링
-                                        st.session_state.production_data = load_production_data()
-                                        
-                                        # 필터 적용 결과 갱신
-                                        if 'filtered_records' in st.session_state:
-                                            records = st.session_state.production_data
-                                            # 같은 필터 조건으로 다시 필터링
-                                            filtered_results = []
-                                            for record in records:
-                                                if record.get('id') == record_id:
-                                                    # 업데이트된 레코드 사용
-                                                    filtered_results.append(updated_data)
-                                                elif record in st.session_state['filtered_records']:
-                                                    # 기존 필터링된 결과에 있는 레코드는 유지
-                                                    filtered_results.append(record)
-                                            
-                                            st.session_state['filtered_records'] = filtered_results
-                                        
-                                        # 재실행
-                                        st.experimental_rerun()
-                                    else:
-                                        st.error("데이터 저장 중 오류가 발생했습니다.")
-                                except Exception as e:
-                                    st.error(f"데이터 수정 중 오류: {str(e)}")
-                                    import traceback
-                                    print(f"[ERROR] 상세 오류: {traceback.format_exc()}")
-                        
-                        # 삭제 기능
-                        delete_confirm = st.checkbox("삭제하려면 체크하세요")
-                        if delete_confirm:
-                            if st.button("선택한 데이터 삭제"):
-                                record_id = selected_row.get('id')
-                                if not record_id:
-                                    st.error("레코드 ID를 찾을 수 없습니다.")
+                                success = st.session_state.db.delete_production_record(record_id)
+                                
+                                if success:
+                                    st.success("✅ 데이터가 성공적으로 삭제되었습니다.")
+                                    # 세션 상태 초기화 및 데이터 리로드
+                                    st.session_state.pop('production_data', None)
+                                    st.session_state.production_data = load_production_data()
+                                    st.experimental_rerun()
                                 else:
-                                    try:
-                                        # 데이터베이스 객체 확보
-                                        if 'db' not in st.session_state:
-                                            st.session_state.db = SupabaseDB()
-                                        
-                                        # 삭제 시도
-                                        success = st.session_state.db.delete_production_record(record_id)
-                                        
-                                        if success:
-                                            st.success("데이터가 성공적으로 삭제되었습니다.")
-                                            
-                                            # 필요한 세션 상태 초기화
-                                            st.session_state.pop('production_data', None)
-                                            
-                                            # 필터링된 결과에서 삭제된 레코드 제거
-                                            if 'filtered_records' in st.session_state:
-                                                st.session_state['filtered_records'] = [
-                                                    r for r in st.session_state['filtered_records'] 
-                                                    if r.get('id') != record_id
-                                                ]
-                                            
-                                            # 데이터 다시 로드
-                                            st.session_state.production_data = load_production_data()
-                                            
-                                            # 재실행
-                                            st.experimental_rerun()
-                                        else:
-                                            st.error("데이터 삭제 중 오류가 발생했습니다.")
-                                    except Exception as e:
-                                        st.error(f"데이터 삭제 중 오류: {str(e)}")
-                                        import traceback
-                                        print(f"[ERROR] 상세 오류: {traceback.format_exc()}")
-                except Exception as e:
-                    st.error(f"데이터 그리드 표시 중 오류: {str(e)}")
-                    import traceback
-                    print(f"[ERROR] 상세 오류: {traceback.format_exc()}")
+                                    st.error("데이터 삭제 중 오류가 발생했습니다.")
+                        except Exception as e:
+                            st.error(f"데이터 삭제 중 오류: {str(e)}")
+        
         except Exception as e:
             st.error(f"데이터 처리 중 오류가 발생했습니다: {str(e)}")
             import traceback
