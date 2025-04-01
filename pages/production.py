@@ -292,6 +292,7 @@ def edit_production_data():
                             if 'db' not in st.session_state:
                                 st.session_state.db = SupabaseDB()
                             
+                            print(f"[DEBUG] 데이터 수정 시도: 레코드 ID {record_id}, 데이터: {updated_data}")
                             success = st.session_state.db.update_production_record(record_id, updated_data)
                             
                             if success:
@@ -301,11 +302,22 @@ def edit_production_data():
                                     del st.session_state['production_data']
                                 if 'filtered_records' in st.session_state:
                                     del st.session_state['filtered_records']
+                                # 데이터 다시 로드
                                 st.session_state.production_data = load_production_data()
+                                
+                                # 부드러운 페이지 새로고침을 위해 잠시 대기
+                                import time
+                                time.sleep(0.5)
+                                
+                                # 페이지 새로고침
+                                print(f"[DEBUG] 페이지 새로고침 시도")
                                 st.rerun()
                             else:
                                 st.error("데이터 저장 중 오류가 발생했습니다.")
                     except Exception as e:
+                        import traceback
+                        error_details = traceback.format_exc()
+                        print(f"[ERROR] 데이터 수정 중 오류: {e}\n{error_details}")
                         st.error(f"데이터 수정 중 오류: {str(e)}")
                 
                 # 삭제 기능

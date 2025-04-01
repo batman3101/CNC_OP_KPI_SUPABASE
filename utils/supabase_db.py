@@ -785,29 +785,38 @@ class SupabaseDB:
     def update_production_record(self, record_id, data):
         """생산 실적 업데이트"""
         try:
-            # 필드 매핑 확인
-            id_field = 'STT'  # 기본값
+            print(f"[DEBUG] 생산 실적 업데이트 시작: ID={record_id}")
             
-            # 테이블 구조 확인
-            table_info = self.client.table('Production').select('*').limit(1).execute()
-            if table_info.data and len(table_info.data) > 0:
-                first_record = table_info.data[0]
-                for key in first_record.keys():
-                    if key == 'id' or key == 'STT' or key == 'stt' or key == 'ID':
-                        id_field = key
-                        break
+            # 레코드 존재 여부 확인
+            response = self.client.table('Production').select('*').eq('id', record_id).execute()
+            records = response.data
             
-            print(f"[DEBUG] 업데이트에 사용할 ID 필드: {id_field}, 레코드 ID: {record_id}")
+            if not records:
+                print(f"[ERROR] 업데이트할 레코드를 찾을 수 없음: {record_id}")
+                return False
+            
+            print(f"[INFO] 업데이트할 레코드 정보: {records[0]}")
             
             # 올바른 ID 필드로 업데이트
-            response = self.client.table('Production').update(data).eq(id_field, record_id).execute()
+            response = self.client.table('Production').update(data).eq('id', record_id).execute()
             
-            # 관련 캐시 무효화
-            self._invalidate_cache()  # 모든 캐시 무효화
-            
-            return True
+            # 응답 확인
+            if hasattr(response, 'data') and response.data:
+                print(f"[INFO] 레코드 업데이트 성공: {record_id}, 응답: {response.data}")
+                # 캐시 무효화
+                self._invalidate_cache()  # 모든 캐시 무효화
+                return True
+            else:
+                print(f"[ERROR] 레코드 업데이트 실패: {record_id}, 응답: {response}")
+                # 응답에 오류 여부 확인
+                if hasattr(response, 'error') and response.error:
+                    print(f"[ERROR] 업데이트 오류 세부 정보: {response.error}")
+                return False
+                
         except Exception as e:
-            print(f"생산 실적 업데이트 중 오류 발생: {e}")
+            import traceback
+            print(f"[ERROR] 생산 실적 업데이트 중 오류 발생: {str(e)}")
+            print(f"[ERROR] 상세 오류: {traceback.format_exc()}")
             return False
     
     def delete_production_record(self, record_id):
