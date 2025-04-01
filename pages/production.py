@@ -203,18 +203,18 @@ def edit_production_data():
             with col1:
                 if st.button("◀️ 이전", disabled=st.session_state.edit_page_number <= 1):
                     st.session_state.edit_page_number -= 1
-                    st.experimental_rerun()
+                    st.rerun()
             with col2:
                 if st.button("다음 ▶️", disabled=st.session_state.edit_page_number >= total_pages):
                     st.session_state.edit_page_number += 1
-                    st.experimental_rerun()
+                    st.rerun()
             with col3:
                 st.write(f"페이지: {st.session_state.edit_page_number}/{total_pages}")
             with col4:
                 new_page = st.number_input("페이지 이동", min_value=1, max_value=total_pages, value=st.session_state.edit_page_number, step=1)
                 if new_page != st.session_state.edit_page_number:
                     st.session_state.edit_page_number = new_page
-                    st.experimental_rerun()
+                    st.rerun()
             
             # 데이터 선택 기능
             st.markdown("### 🔍 데이터 선택")
@@ -302,7 +302,7 @@ def edit_production_data():
                                 if 'filtered_records' in st.session_state:
                                     del st.session_state['filtered_records']
                                 st.session_state.production_data = load_production_data()
-                                st.experimental_rerun()
+                                st.rerun()
                             else:
                                 st.error("데이터 저장 중 오류가 발생했습니다.")
                     except Exception as e:
@@ -335,7 +335,7 @@ def edit_production_data():
                                     if 'filtered_records' in st.session_state:
                                         del st.session_state['filtered_records']
                                     st.session_state.production_data = load_production_data()
-                                    st.experimental_rerun()
+                                    st.rerun()
                                 else:
                                     st.error("데이터 삭제 중 오류가 발생했습니다.")
                         except Exception as e:
@@ -414,7 +414,7 @@ def add_production_data():
                 save_production_data(record)
                 
                 st.success("생산 실적이 저장되었습니다.")
-                st.experimental_rerun()
+                st.rerun()
             except Exception as e:
                 st.error(f"생산 실적 저장 중 오류가 발생했습니다: {str(e)}")
 
@@ -504,18 +504,18 @@ def view_production_data():
         with col1:
             if st.button("◀️ 이전", key="view_prev", disabled=st.session_state.view_page_number <= 1):
                 st.session_state.view_page_number -= 1
-                st.experimental_rerun()
+                st.rerun()
         with col2:
             if st.button("다음 ▶️", key="view_next", disabled=st.session_state.view_page_number >= total_pages):
                 st.session_state.view_page_number += 1
-                st.experimental_rerun()
+                st.rerun()
         with col3:
             st.write(f"페이지: {st.session_state.view_page_number}/{total_pages}")
         with col4:
             new_page = st.number_input("페이지 이동", min_value=1, max_value=total_pages, value=st.session_state.view_page_number, step=1, key="view_page_input")
             if new_page != st.session_state.view_page_number:
                 st.session_state.view_page_number = new_page
-                st.experimental_rerun()
+                st.rerun()
         
         # 통계 계산 및 표시
         if not df.empty and '목표수량' in df.columns and '생산수량' in df.columns:
