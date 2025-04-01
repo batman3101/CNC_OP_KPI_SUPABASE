@@ -811,31 +811,35 @@ class SupabaseDB:
             return False
     
     def delete_production_record(self, record_id):
-        """생산 실적 삭제"""
+        """레코드 ID로 생산 기록을 삭제합니다."""
         try:
-            # 필드 매핑 확인
-            id_field = 'STT'  # 기본값
+            print(f"[DEBUG] 삭제 시도 중인 레코드 ID: {record_id}")
             
-            # 테이블 구조 확인
-            table_info = self.client.table('Production').select('*').limit(1).execute()
-            if table_info.data and len(table_info.data) > 0:
-                first_record = table_info.data[0]
-                for key in first_record.keys():
-                    if key == 'id' or key == 'STT' or key == 'stt' or key == 'ID':
-                        id_field = key
-                        break
+            # 기존 데이터 가져오기
+            response = self.client.table('Production').select('*').eq('id', record_id).execute()
+            records = response.data
             
-            print(f"[DEBUG] 삭제에 사용할 ID 필드: {id_field}, 레코드 ID: {record_id}")
+            if not records:
+                print(f"[ERROR] 해당 ID의 레코드를 찾을 수 없음: {record_id}")
+                return False
             
-            # 올바른 ID 필드로 삭제
-            response = self.client.table('Production').delete().eq(id_field, record_id).execute()
+            # 데이터 삭제
+            response = self.client.table('Production').delete().eq('id', record_id).execute()
             
-            # 관련 캐시 무효화
-            self._invalidate_cache()  # 모든 캐시 무효화
-            
-            return True
+            # 응답 확인
+            if response.data:
+                print(f"[INFO] 레코드 삭제 성공: {record_id}")
+                # 캐시 무효화
+                self._invalidate_cache()
+                return True
+            else:
+                print(f"[ERROR] 레코드 삭제 실패: {record_id}, 응답: {response}")
+                return False
+        
         except Exception as e:
-            print(f"생산 실적 삭제 중 오류 발생: {e}")
+            import traceback
+            print(f"[ERROR] 레코드 삭제 중 오류 발생: {str(e)}")
+            print(f"[ERROR] 상세 오류: {traceback.format_exc()}")
             return False
     
     # 모델 관련 메서드
