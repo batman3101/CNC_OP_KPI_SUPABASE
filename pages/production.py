@@ -219,7 +219,7 @@ def edit_production_data():
             # 선택된 행 처리
             selected_rows = grid_response['selected_rows']
             
-            # 선택된 행이 있고 데이터가 존재하는지 확인
+            # 선택된 행이 있는지 확인
             if selected_rows and len(selected_rows) > 0:
                 # 선택된 첫 번째 행 가져오기
                 selected_row = selected_rows[0]
@@ -356,7 +356,12 @@ def edit_production_data():
                                     st.error("실적 데이터 수정 중 오류가 발생했습니다.")
                                     
                                 # 세션 상태 업데이트
-                                st.session_state['production_filtered_df'] = pd.DataFrame(st.session_state['production_filtered_records'])
+                                if len(st.session_state['production_filtered_records']) > 0:
+                                    st.session_state['production_filtered_df'] = pd.DataFrame(st.session_state['production_filtered_records'])
+                                else:
+                                    st.session_state.pop('production_filtered_df', None)
+                                    st.session_state.pop('production_filtered_records', None)
+                                
                                 st.experimental_rerun()
                             except Exception as e:
                                 st.error(f"데이터 수정 중 오류가 발생했습니다: {str(e)}")
@@ -403,7 +408,7 @@ def edit_production_data():
                                     st.session_state.pop('selected_production_record', None)
                                     
                                     # DataFrame 업데이트
-                                    if st.session_state['production_filtered_records']:
+                                    if len(st.session_state['production_filtered_records']) > 0:
                                         st.session_state['production_filtered_df'] = pd.DataFrame(st.session_state['production_filtered_records'])
                                     else:
                                         st.session_state.pop('production_filtered_df', None)
@@ -644,15 +649,21 @@ def view_production_data():
             filterable=True
         )
         
-        # 날짜, 작업자, 라인별 그룹핑 설정
-        gb.configure_column("생산일자", rowGroup=True, hide=False)
-        gb.configure_column("작업자", rowGroup=True, hide=False)
-        gb.configure_column("라인", rowGroup=True, hide=False)
+        # 날짜, 작업자, 라인별 그룹핑 설정 - 필드명 확인 먼저 수행
+        if '생산일자' in filtered_df.columns:
+            gb.configure_column("생산일자", rowGroup=True, hide=False)
+        if '작업자' in filtered_df.columns:
+            gb.configure_column("작업자", rowGroup=True, hide=False)
+        if '라인' in filtered_df.columns:
+            gb.configure_column("라인", rowGroup=True, hide=False)
         
-        # 집계 함수 설정
-        gb.configure_column("목표수량", aggFunc="sum", type=["numericColumn", "numberColumnFilter"])
-        gb.configure_column("생산수량", aggFunc="sum", type=["numericColumn", "numberColumnFilter"])
-        gb.configure_column("불량수량", aggFunc="sum", type=["numericColumn", "numberColumnFilter"])
+        # 집계 함수 설정 - 필드명 확인 먼저 수행
+        if '목표수량' in filtered_df.columns:
+            gb.configure_column("목표수량", aggFunc="sum", type=["numericColumn", "numberColumnFilter"])
+        if '생산수량' in filtered_df.columns:
+            gb.configure_column("생산수량", aggFunc="sum", type=["numericColumn", "numberColumnFilter"])
+        if '불량수량' in filtered_df.columns:
+            gb.configure_column("불량수량", aggFunc="sum", type=["numericColumn", "numberColumnFilter"])
         
         grid_options = gb.build()
         
