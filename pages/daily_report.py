@@ -168,38 +168,8 @@ def show_daily_report():
                 '목표수량', '생산수량', '불량수량', '작업효율'
             ]
             
-            # AgGrid 설정
-            gb = GridOptionsBuilder.from_dataframe(df[display_columns])
-            gb.configure_pagination(enabled=True, paginationAutoPageSize=False, paginationPageSize=100)
-            
-            # 기본 컬럼 설정 - Community 버전 호환
-            gb.configure_default_column(
-                value=True,
-                editable=False,
-                sortable=True,
-                resizable=True,
-                filterable=True
-            )
-            
-            # 단순 선택 모드 설정
-            gb.configure_selection(selection_mode='single')
-            
-            grid_options = gb.build()
-            
-            # AgGrid 표시 - Community 버전 설정
-            AgGrid(
-                df[display_columns],
-                gridOptions=grid_options,
-                height=500,
-                width='100%',
-                data_return_mode='AS_INPUT',
-                update_mode='VALUE_CHANGED',
-                fit_columns_on_grid_load=False,
-                enable_enterprise_modules=False,
-                allow_unsafe_jscode=False
-            )
-            
-            st.write(f"총 {len(df)}개 데이터 표시 중")
+            # AgGrid를 사용하여 데이터 표시
+            display_data_grid(df[display_columns])
         
         # 통계 계산 시에도 특이사항 제외
         if not df.empty:
@@ -352,3 +322,31 @@ def show_daily_report():
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.info(f"{selected_date} 날짜의 생산 실적이 없습니다.") 
+
+# AgGrid를 사용하여 데이터 표시
+def display_data_grid(df, title="데이터 테이블"):
+    try:
+        if df is None or len(df) == 0:
+            st.info("표시할 데이터가 없습니다.")
+            return
+        
+        st.subheader(title)
+        
+        # 가장 기본적인 설정만 사용하여 AgGrid 설정
+        gb = GridOptionsBuilder.from_dataframe(df)
+        gb.configure_pagination(paginationPageSize=10)
+        gb.configure_default_column(sortable=True)
+        gb.configure_selection(selection_mode='single')
+        grid_options = gb.build()
+        
+        # 최소한의 옵션으로 그리드 표시
+        AgGrid(
+            df,
+            gridOptions=grid_options,
+            enable_enterprise_modules=False,
+            update_mode=GridUpdateMode.SELECTION_CHANGED,
+            fit_columns_on_grid_load=True,
+            height=400
+        )
+    except Exception as e:
+        st.error(f"데이터 그리드 표시 중 오류가 발생했습니다: {str(e)}") 
