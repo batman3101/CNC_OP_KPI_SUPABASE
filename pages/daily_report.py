@@ -3,7 +3,8 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime, timedelta
-from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode
+# AgGrid 관련 임포트 제거
+# from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode
 import sys
 import os
 import numpy as np
@@ -342,7 +343,7 @@ def display_data_grid(df, title="데이터 테이블"):
         grid_options = gb.build()
         
         # 최소한의 옵션으로 그리드 표시
-        AgGrid(
+        st.dataframe(
             df,
             gridOptions=grid_options,
             enable_enterprise_modules=False,
