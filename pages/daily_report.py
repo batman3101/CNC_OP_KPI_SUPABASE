@@ -49,56 +49,50 @@ def show():
         st.session_state.production_data = load_production_data()
     
     # 날짜 선택
-    with st.form(key="일일보고서_날짜선택"):
-        col1, col2 = st.columns([4, 1])
-        with col1:
-            target_date = st.date_input("보고서 날짜", value=datetime.now().date(), key="report_date")
-        with col2:
-            st.write("")  # 버튼을 date_input과 같은 높이로 정렬하기 위한 빈 공간
-            generate_button = st.form_submit_button("보고서 생성", use_container_width=True)
+    st.write("보고서 날짜")
+    target_date = st.date_input("", value=datetime.now().date(), key="report_date", label_visibility="collapsed")
     
-    if generate_button or st.session_state.daily_report_data is not None:
-        # 선택된 날짜의 데이터 필터링
-        target_date_str = target_date.strftime("%Y-%m-%d")
+    # 선택된 날짜의 데이터 필터링
+    target_date_str = target_date.strftime("%Y-%m-%d")
+    
+    try:
+        # 데이터 존재 여부 확인
+        if st.session_state.production_data is None or len(st.session_state.production_data) == 0:
+            st.warning("생산 데이터가 없습니다.")
+            return
         
-        try:
-            # 데이터 존재 여부 확인
-            if st.session_state.production_data is None or len(st.session_state.production_data) == 0:
-                st.warning("생산 데이터가 없습니다.")
-                return
-            
-            # 해당 날짜의 데이터만 필터링
-            filtered_records = []
-            for record in st.session_state.production_data:
-                if record.get('날짜', '') == target_date_str:
-                    filtered_records.append(record)
-            
-            if not filtered_records:
-                st.warning(f"{target_date_str} 날짜에 해당하는 생산 데이터가 없습니다.")
-                return
-            
-            # 데이터프레임 생성
-            df = pd.DataFrame(filtered_records)
-            
-            # 세션에 저장
-            st.session_state.daily_report_data = df
-            
-            # 여러 탭으로 데이터 표시
-            tab1, tab2, tab3 = st.tabs(["요약", "상세 데이터", "효율성 분석"])
-            
-            with tab1:
-                display_summary(df, target_date_str)
-            
-            with tab2:
-                display_detailed_data(df)
-            
-            with tab3:
-                display_efficiency_analysis(df)
-            
-        except Exception as e:
-            st.error(f"데이터 처리 중 오류가 발생했습니다: {str(e)}")
-            import traceback
-            print(f"[ERROR] 상세 오류: {traceback.format_exc()}")
+        # 해당 날짜의 데이터만 필터링
+        filtered_records = []
+        for record in st.session_state.production_data:
+            if record.get('날짜', '') == target_date_str:
+                filtered_records.append(record)
+        
+        if not filtered_records:
+            st.warning(f"{target_date_str} 날짜에 해당하는 생산 데이터가 없습니다.")
+            return
+        
+        # 데이터프레임 생성
+        df = pd.DataFrame(filtered_records)
+        
+        # 세션에 저장
+        st.session_state.daily_report_data = df
+        
+        # 여러 탭으로 데이터 표시
+        tab1, tab2, tab3 = st.tabs(["요약", "상세 데이터", "효율성 분석"])
+        
+        with tab1:
+            display_summary(df, target_date_str)
+        
+        with tab2:
+            display_detailed_data(df)
+        
+        with tab3:
+            display_efficiency_analysis(df)
+        
+    except Exception as e:
+        st.error(f"데이터 처리 중 오류가 발생했습니다: {str(e)}")
+        import traceback
+        print(f"[ERROR] 상세 오류: {traceback.format_exc()}")
 
 def display_summary(df, date_str):
     try:
