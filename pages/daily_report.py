@@ -50,7 +50,7 @@ def show():
     
     # 날짜 선택
     with st.form(key="일일보고서_날짜선택"):
-        col1, col2 = st.columns(2)
+        col1, col2 = st.columns([3, 1])
         with col1:
             target_date = st.date_input("보고서 날짜", value=datetime.now().date())
         with col2:
@@ -279,7 +279,7 @@ def display_efficiency_analysis(df):
                 '불량률': worker_summary['불량률']
             }).set_index('작업자')
             st.subheader("불량률 (%)")
-            st.bar_chart(defect_chart)
+            st.bar_chart(defect_chart, color="#FF6666")
         
         # 라인별 효율성 분석
         st.markdown("### 🏭 라인별 생산 효율성")
