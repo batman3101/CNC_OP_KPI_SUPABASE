@@ -50,10 +50,11 @@ def show():
     
     # 날짜 선택
     with st.form(key="일일보고서_날짜선택"):
-        col1, col2 = st.columns([3, 1])
+        col1, col2 = st.columns([4, 1])
         with col1:
-            target_date = st.date_input("보고서 날짜", value=datetime.now().date())
+            target_date = st.date_input("보고서 날짜", value=datetime.now().date(), key="report_date")
         with col2:
+            st.write("")  # 버튼을 date_input과 같은 높이로 정렬하기 위한 빈 공간
             generate_button = st.form_submit_button("보고서 생성", use_container_width=True)
     
     if generate_button or st.session_state.daily_report_data is not None:
