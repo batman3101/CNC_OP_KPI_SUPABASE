@@ -59,7 +59,7 @@ def show_data_sync():
     if 'sync_options_db' not in st.session_state:
         st.session_state.sync_options_db = ["작업자 데이터", "생산 실적 데이터"]
     
-    tab1, tab2 = st.tabs(["데이터 동기화", "Supabase 설정"])
+    tab1, tab2, tab3 = st.tabs(["데이터 동기화", "Supabase 설정", "데이터 초기화"])
     
     # 데이터 동기화 탭
     with tab1:
@@ -465,3 +465,66 @@ def show_data_sync():
         # 캐시 초기화
         st.session_state.db._invalidate_cache()
         st.session_state.production_data = None
+        
+    # 데이터 초기화 탭
+    with tab3:
+        st.subheader("데이터 초기화")
+        st.warning("⚠️ 초기화 기능은 데이터를 영구적으로 삭제할 수 있습니다. 신중하게 사용하세요.")
+        
+        reset_type = st.selectbox(
+            "초기화할 데이터 유형",
+            options=["생산 실적", "모델 데이터", "작업자 데이터", "사용자 데이터"]
+        )
+        
+        confirm_text = st.text_input("초기화하려면 'RESET'을 입력하세요", value="")
+        
+        if st.button("데이터 초기화", key="reset_btn", disabled=(confirm_text != "RESET")):
+            try:
+                db = st.session_state.db
+                if reset_type == "생산 실적":
+                    # 생산 실적 데이터 초기화
+                    try:
+                        result = db.client.table('Production').delete().neq('id', 0).execute()
+                        st.success(f"생산 실적 데이터가 초기화되었습니다.")
+                        # 세션 상태 초기화
+                        st.session_state.production_data = None
+                    except Exception as e:
+                        st.error(f"생산 실적 데이터 초기화 중 오류 발생: {str(e)}")
+                        
+                elif reset_type == "모델 데이터":
+                    # 모델 데이터 초기화 
+                    try:
+                        result = db.client.table('Model').delete().neq('id', 0).execute()
+                        st.success(f"모델 데이터가 초기화되었습니다.")
+                        # 세션 상태 초기화
+                        st.session_state.models = None
+                    except Exception as e:
+                        st.error(f"모델 데이터 초기화 중 오류 발생: {str(e)}")
+                        
+                elif reset_type == "작업자 데이터":
+                    # 작업자 데이터 초기화
+                    try:
+                        result = db.client.table('Workers').delete().neq('id', 0).execute()
+                        st.success(f"작업자 데이터가 초기화되었습니다.")
+                        # 세션 상태 초기화
+                        st.session_state.workers = None
+                    except Exception as e:
+                        st.error(f"작업자 데이터 초기화 중 오류 발생: {str(e)}")
+                        
+                elif reset_type == "사용자 데이터":
+                    # 사용자 데이터 초기화 (관리자 데이터는 유지)
+                    try:
+                        result = db.client.table('Users').delete().not_eq('권한', '관리자').execute()
+                        st.success(f"일반 사용자 데이터가 초기화되었습니다. (관리자 계정은 유지됩니다)")
+                        # 세션 상태 초기화
+                        st.session_state.users = None
+                    except Exception as e:
+                        st.error(f"사용자 데이터 초기화 중 오류 발생: {str(e)}")
+                
+                # 캐시 초기화
+                db._invalidate_cache()
+                
+            except Exception as e:
+                st.error(f"데이터 초기화 중 오류 발생: {str(e)}")
+                import traceback
+                st.code(traceback.format_exc(), language="python")
