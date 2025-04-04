@@ -29,7 +29,7 @@ initialize_admin()
 
 # 영어 메뉴 항목 숨기기
 st.set_page_config(
-    page_title=translate("생산관리 시스템"),
+    page_title=translate("ALMUS TECH CNC 작업자 KPI 관리 시스템"),
     page_icon="🏭",
     layout="wide",
     menu_items={

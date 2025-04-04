@@ -1,6 +1,7 @@
 {
   "ko": {
     "생산관리 시스템": "생산관리 시스템",
+    "ALMUS TECH CNC 작업자 KPI 관리 시스템": "ALMUS TECH CNC 작업자 KPI 관리 시스템",
     "안녕하세요": "안녕하세요",
     "👥 관리자 메뉴": "👥 관리자 메뉴",
     "🔑 관리자 및 사용자 관리": "🔑 관리자 및 사용자 관리",
@@ -274,6 +275,7 @@
   },
   "vi": {
     "생산관리 시스템": "Hệ thống quản lý sản xuất",
+    "ALMUS TECH CNC 작업자 KPI 관리 시스템": "Hệ thống quản lý KPI công nhân CNC ALMUS TECH",
     "안녕하세요": "Xin chào",
     "👥 관리자 메뉴": "👥 Menu quản trị",
     "🔑 관리자 및 사용자 관리": "🔑 Quản lý quản trị viên và người dùng",
