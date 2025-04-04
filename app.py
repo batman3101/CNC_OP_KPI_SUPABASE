@@ -7,42 +7,8 @@ import bcrypt
 from utils.auth import initialize_admin
 from utils.sidebar import show_sidebar
 from utils.login import login, logout, verify_password
-from utils.translation import translate, load_translations, change_language, get_current_language
+from utils.translations import translate, load_translations, change_language, get_current_language
 import json
-
-# 번역 파일 로드
-def load_translations():
-    try:
-        with open('translations.json', 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except Exception as e:
-        print(f"번역 파일을 로드하는 중 오류가 발생했습니다: {e}")
-        return {"ko": {}, "vi": {}}
-
-# 번역 함수 (앱 전체에서 사용)
-def translate(text):
-    translations = st.session_state.translations
-    current_lang = st.session_state.language
-    
-    # 현재 언어가 한국어면 원문 반환
-    if current_lang == 'ko':
-        return text
-        
-    # 한국어 원문에 해당하는 키 찾기
-    for key, value in translations['ko'].items():
-        if value == text:
-            # 해당 키의 번역문 반환
-            translated = translations[current_lang].get(key)
-            if translated and translated.strip():
-                return translated
-    
-    # 번역을 찾지 못한 경우 원문 반환
-    return text
-
-# 언어 전환 함수
-def change_language(lang):
-    st.session_state.language = lang
-    st.rerun()
 
 # 초기화 
 if 'translations' not in st.session_state:
