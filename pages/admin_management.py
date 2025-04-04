@@ -4,7 +4,7 @@ from datetime import datetime
 from utils.user_data import load_user_data, save_user_data
 from utils.supabase_db import SupabaseDB
 import bcrypt
-from utils.translation import translate
+from utils.translations import translate
 
 # config_local.py가 있으면 관리자 계정 정보 로드, 없으면 기본값 사용
 try:

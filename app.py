@@ -85,9 +85,11 @@ with st.sidebar:
     with col1:
         if st.button(translate("한국어"), key="ko_lang"):
             change_language('ko')
+            st.rerun()
     with col2:
         if st.button(translate("베트남어"), key="vi_lang"):
             change_language('vi')
+            st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
     
     # 관리자 메뉴 그룹
