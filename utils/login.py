@@ -114,4 +114,4 @@ def logout():
     if 'user_email' in st.session_state:
         st.session_state.user_email = None
     if 'user_role' in st.session_state:
-        st.session_state.user_role = None 
+        st.session_state.user_role = None
