@@ -1,82 +1,82 @@
 import streamlit as st
 import bcrypt
-from typing import Optional
+from utils.translation import translate
 
-def login() -> Optional[dict]:
-    """
-    사용자 로그인 처리 함수
-    
-    Returns:
-        Optional[dict]: 로그인 성공 시 사용자 정보, 실패 시 None
-    """
-    st.title("로그인")
-    
-    # 폼 대신 일반 입력 필드 사용
-    email = st.text_input("이메일", key="login_email_direct")
-    password = st.text_input("비밀번호", type="password", key="login_password_direct")
-    
-    # 일반 버튼 사용
-    if st.button("로그인", key="login_button_direct"):
-        if 'db' in st.session_state:
-            # Supabase에서 사용자 정보 조회
-            user = st.session_state.db.get_user(email)
+def verify_password(stored_hash, provided_password):
+    """저장된 해시와 제공된 비밀번호를 비교하여 일치하는지 확인"""
+    try:
+        # 저장된 해시가 문자열이라면 바이트로 변환
+        if isinstance(stored_hash, str):
+            stored_hash = stored_hash.encode('utf-8')
+        
+        # 제공된 비밀번호가 문자열이라면 바이트로 변환
+        if isinstance(provided_password, str):
+            provided_password = provided_password.encode('utf-8')
             
-            if user and verify_password(password, user['비밀번호']):
-                # 사용자 정보 세션에 저장
-                st.session_state.authenticated = True
-                st.session_state.username = user['이름']
-                st.session_state.user_email = email.strip().lower()
-                st.session_state.user_role = user['권한']
+        return bcrypt.checkpw(provided_password, stored_hash)
+    except Exception as e:
+        print(f"비밀번호 검증 중 오류 발생: {e}")
+        return False
+    
+def login():
+    """로그인 페이지를 표시하고 로그인 처리"""
+    
+    # 이미 로그인되어 있으면 처리 중단
+    if st.session_state.get('authenticated', False):
+        return {'username': st.session_state.username, 'email': st.session_state.user_email}
+    
+    # 로그인 폼
+    st.title(translate("생산관리 시스템"))
+    
+    with st.form("login_form"):
+        username = st.text_input(translate("사용자 이름"))
+        password = st.text_input(translate("비밀번호"), type="password")
+        submit_button = st.form_submit_button(translate("로그인"))
+    
+    # 로그인 버튼 클릭 처리
+    if submit_button:
+        # 로그인 처리 로직
+        if 'db' in st.session_state:
+            try:
+                users = st.session_state.db.get_all_users()
                 
-                # 관리자 계정 목록 다시 로드 (최신 상태 유지)
-                try:
-                    all_users = st.session_state.db.get_all_users()
-                    admin_emails = [u.get('이메일', '').strip().lower() for u in all_users if u.get('권한', '') == '관리자']
-                    st.session_state.admin_accounts = admin_emails
-                    
-                    # 관리자 권한 설정 (이메일로 확인)
-                    if st.session_state.user_email in st.session_state.admin_accounts:
-                        st.session_state.user_role = '관리자'
-                except Exception as e:
-                    st.error(f"관리자 계정 목록 업데이트 중 오류 발생: {e}")
+                # 일치하는 사용자 찾기
+                for user in users:
+                    if (user.get('이름') == username and 
+                        verify_password(user.get('비밀번호', '').encode('utf-8'), password)):
+                        
+                        # 로그인 성공 - 세션 상태 업데이트
+                        st.session_state.authenticated = True
+                        st.session_state.username = username
+                        st.session_state.user_email = user.get('이메일', '')
+                        st.session_state.user_role = user.get('권한', '')
+                        
+                        return {
+                            'username': username,
+                            'email': user.get('이메일', '')
+                        }
                 
-                st.success(f"{user['이름']}님, 로그인 성공!")
-                return user
-            else:
-                st.error("이메일 또는 비밀번호가 올바르지 않습니다.")
+                # 로그인 실패 처리
+                st.error(translate("사용자 이름 또는 비밀번호가 잘못되었습니다."))
+                return None
+                
+            except Exception as e:
+                st.error(f"로그인 처리 중 오류 발생: {e}")
+                return None
         else:
-            st.error("데이터베이스 연결이 설정되어 있지 않습니다.")
+            # Supabase 연결이 없는 경우
+            st.warning(translate("관리자 계정이 없습니다. 먼저 관리자 계정을 생성해주세요."))
+            return None
     
     return None
 
 def logout():
-    """
-    사용자 로그아웃 처리 함수
-    """
-    st.session_state.authenticated = False
-    st.session_state.username = None
-    st.session_state.user_email = None
-    st.session_state.user_role = None
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """
-    비밀번호 검증 함수
-    
-    Args:
-        plain_password: 일반 텍스트 비밀번호
-        hashed_password: 해시된 비밀번호
-        
-    Returns:
-        bool: 비밀번호 일치 여부
-    """
-    try:
-        # 해시된 비밀번호가 bcrypt 형식인지 확인
-        if hashed_password.startswith('$2'):
-            # bcrypt 해시 검증
-            return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
-        else:
-            # 일반 텍스트 비밀번호 비교 (개발 환경용)
-            return plain_password == hashed_password
-    except Exception as e:
-        print(f"비밀번호 검증 중 오류 발생: {e}")
-        return False 
+    """로그아웃 처리 - 세션 상태에서 인증 정보 제거"""
+    if 'authenticated' in st.session_state:
+        st.session_state.authenticated = False
+    if 'username' in st.session_state:
+        st.session_state.username = None
+    if 'user_email' in st.session_state:
+        st.session_state.user_email = None
+    if 'user_role' in st.session_state:
+        st.session_state.user_role = None 
