@@ -39,6 +39,10 @@ st.set_page_config(
     }
 )
 
+# 메인 페이지 타이틀
+if not st.session_state.get('authenticated', False):
+    st.title(translate("ALMUS TECH CNC 작업자 KPI 관리 시스템"))
+
 # 페이지 숨기기 CSS
 hide_pages = """
 <style>
