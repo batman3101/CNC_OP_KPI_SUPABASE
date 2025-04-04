@@ -249,30 +249,27 @@ def display_monthly_charts(worker_stats):
         plot_bgcolor='white'
     )
     
-    # 그래프 표시
     st.plotly_chart(fig, use_container_width=True)
 
 def display_monthly_stats_table(worker_stats):
     st.subheader(translate("작업자별 월간 실적"))
     
-    # KPI 컬럼 계산
+    # 진행 중인 작업 현황
     worker_stats['생산목표달성률'] = round((worker_stats['생산수량'] / worker_stats['목표수량']) * 100, 1)
     worker_stats['불량률'] = round((worker_stats['불량수량'] / worker_stats['생산수량']) * 100, 1)
     
-    # 작업자별 실적 테이블 표시
-    worker_stats_display = worker_stats.copy()
+    # 소수점 첫째 자리까지 포맷팅하고 % 기호 추가
+    worker_stats['생산목표달성률'] = worker_stats['생산목표달성률'].apply(lambda x: f'{x}%')
+    worker_stats['불량률'] = worker_stats['불량률'].apply(lambda x: f'{x}%')
+    worker_stats['작업효율'] = worker_stats['작업효율'].apply(lambda x: f'{x}%')
     
-    # % 기호 추가
-    worker_stats_display['생산목표달성률'] = worker_stats_display['생산목표달성률'].astype(str) + '%'
-    worker_stats_display['불량률'] = worker_stats_display['불량률'].astype(str) + '%'
-    worker_stats_display['작업효율'] = worker_stats_display['작업효율'].astype(str) + '%'
+    # 테이블 컬럼 번역을 위한 복사본 생성
+    display_stats = worker_stats.copy()
+    display_stats.columns = [translate(col) for col in display_stats.columns]
     
-    # 테이블에 표시할 컬럼 선택
-    display_columns = ['작업자', '목표수량', '생산수량', '불량수량', '생산목표달성률', '불량률', '작업효율']
-    
-    # 테이블 표시
+    # 데이터프레임 출력
     st.dataframe(
-        worker_stats_display[display_columns],
+        display_stats,
         use_container_width=True,
         hide_index=True
     ) 

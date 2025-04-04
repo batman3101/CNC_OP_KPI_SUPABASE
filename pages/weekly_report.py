@@ -53,47 +53,11 @@ def show_weekly_report():
         # 세션 상태에 db가 없으면 새로 생성
         if 'db' not in st.session_state:
             st.session_state.db = SupabaseDB()
-            st.write(translate("새로운 SupabaseDB 인스턴스를 생성했습니다."))
         
-        st.write(translate("데이터베이스에서 생산 실적을 조회합니다..."))
         records = st.session_state.db.get_production_records(
             start_date=start_of_week.strftime('%Y-%m-%d'),
             end_date=end_of_week.strftime('%Y-%m-%d')
         )
-        
-        st.write(f"{translate('조회된 레코드 수')}: {len(records)}")
-        
-        # 디버깅용: 조회된 레코드 출력
-        if len(records) == 0:
-            st.warning(translate("해당 기간에 조회된 데이터가 없습니다."))
-            
-            # 다른 기간 데이터 확인 (2월 데이터)
-            st.write(translate("2월 데이터 확인 중..."))
-            feb_start = datetime(2024, 2, 1).date()
-            feb_end = datetime(2024, 2, 29).date()
-            feb_records = st.session_state.db.get_production_records(
-                start_date=feb_start.strftime('%Y-%m-%d'),
-                end_date=feb_end.strftime('%Y-%m-%d')
-            )
-            st.write(f"{translate('2월 데이터 레코드 수')}: {len(feb_records)}")
-            
-            if len(feb_records) > 0:
-                st.write(translate("2월 첫 번째 레코드 샘플:"))
-                st.write(feb_records[0])
-            else:
-                st.error(translate("2월 데이터도 조회되지 않습니다. 데이터베이스 연결 또는 테이블 구조를 확인하세요."))
-                
-                # 테이블 구조 확인
-                st.write(translate("Production 테이블 구조 확인 중..."))
-                try:
-                    # 모든 데이터 조회 시도
-                    all_records = st.session_state.db.client.table('Production').select('*').execute()
-                    st.write(f"{translate('Production 테이블 전체 레코드 수')}: {len(all_records.data)}")
-                    if len(all_records.data) > 0:
-                        st.write(translate("첫 번째 레코드 샘플:"))
-                        st.write(all_records.data[0])
-                except Exception as e:
-                    st.error(f"{translate('테이블 구조 확인 중 오류 발생')}: {e}")
     except Exception as e:
         st.error(f"{translate('데이터 조회 중 오류 발생')}: {e}")
         import traceback
@@ -225,12 +189,15 @@ def show_weekly_report():
         st.subheader(translate("작업자별 주간 실적"))
         
         # 작업효율에 % 추가
-        worker_stats['작업효율'] = worker_stats['작업효율'].astype(str) + '%'
+        worker_stats['작업효율'] = worker_stats['작업효율'].apply(lambda x: f'{x}%')
+        
+        # 테이블 컬럼 번역을 위한 복사본 생성
+        display_stats = worker_stats.copy()
+        display_stats.columns = [translate(col) for col in display_stats.columns]
         
         # 테이블 표시
-        display_columns = ['작업자', '목표수량', '생산수량', '불량수량', '작업효율']
         st.dataframe(
-            worker_stats[display_columns],
+            display_stats,
             use_container_width=True,
             hide_index=True
         )
