@@ -107,11 +107,14 @@ def show_yearly_report():
             '생산수량': 'sum',
             '불량수량': 'sum'
         }).reset_index()
-        monthly_stats = monthly_stats.rename(columns={'날짜': translate('월')})
+        monthly_stats = monthly_stats.rename(columns={'날짜': '월'})
         
-        # 테이블 표시
+        # 월별 현황 테이블 표시 - 열 이름 번역하기
+        monthly_display = monthly_stats.copy()
+        monthly_display.columns = [translate(col) for col in monthly_display.columns]
+        
         st.dataframe(
-            monthly_stats[[translate('월'), translate('목표수량'), translate('생산수량'), translate('불량수량')]],
+            monthly_display,
             use_container_width=True,
             hide_index=True
         )
@@ -125,19 +128,21 @@ def show_yearly_report():
         }).reset_index()
         
         # 라인별 KPI 계산
-        line_stats[translate('생산목표달성률')] = round((line_stats['생산수량'] / line_stats['목표수량']) * 100, 1)
-        line_stats[translate('불량률')] = round((line_stats['불량수량'] / line_stats['생산수량']) * 100, 1)
-        line_stats[translate('작업효율')] = round(((line_stats['생산수량'] - line_stats['불량수량']) / line_stats['목표수량']) * 100, 1)
+        line_stats['생산목표달성률'] = round((line_stats['생산수량'] / line_stats['목표수량']) * 100, 1)
+        line_stats['불량률'] = round((line_stats['불량수량'] / line_stats['생산수량']) * 100, 1)
+        line_stats['작업효율'] = round(((line_stats['생산수량'] - line_stats['불량수량']) / line_stats['목표수량']) * 100, 1)
         
         # KPI 컬럼에 % 기호 추가
-        line_stats[translate('생산목표달성률')] = line_stats[translate('생산목표달성률')].apply(lambda x: f'{x}%')
-        line_stats[translate('불량률')] = line_stats[translate('불량률')].apply(lambda x: f'{x}%')
-        line_stats[translate('작업효율')] = line_stats[translate('작업효율')].apply(lambda x: f'{x}%')
+        line_stats['생산목표달성률'] = line_stats['생산목표달성률'].apply(lambda x: f'{x}%')
+        line_stats['불량률'] = line_stats['불량률'].apply(lambda x: f'{x}%')
+        line_stats['작업효율'] = line_stats['작업효율'].apply(lambda x: f'{x}%')
         
-        # 테이블 표시
+        # 라인별 현황 테이블 표시 - 열 이름 번역하기
+        line_display = line_stats.copy()
+        line_display.columns = [translate(col) for col in line_display.columns]
+        
         st.dataframe(
-            line_stats[[translate('라인번호'), translate('목표수량'), translate('생산수량'), translate('불량수량'), 
-                       translate('생산목표달성률'), translate('불량률'), translate('작업효율')]],
+            line_display,
             use_container_width=True,
             hide_index=True
         )
