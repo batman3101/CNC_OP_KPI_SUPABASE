@@ -8,6 +8,7 @@ import os
 import numpy as np
 import json
 from utils.supabase_db import SupabaseDB
+from utils.translations import translate
 
 # 프로젝트 루트 디렉토리를 path에 추가
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -38,7 +39,7 @@ def paginate_dataframe(dataframe, page_size, page_num):
     return dataframe.iloc[start_idx:end_idx], total_pages
 
 def show():
-    st.title("📊 일일 실적 보고서")
+    st.title(translate("📊 일일 실적 보고서"))
     
     # CSS 스타일 추가
     st.markdown("""
@@ -76,7 +77,7 @@ def show():
         st.session_state.production_data = load_production_data()
     
     # 날짜 선택
-    target_date = st.date_input("조회할 일자", value=datetime.now().date())
+    target_date = st.date_input(translate("조회할 일자"), value=datetime.now().date())
     
     # 선택된 날짜의 데이터 필터링
     target_date_str = target_date.strftime("%Y-%m-%d")
@@ -84,7 +85,7 @@ def show():
     try:
         # 데이터 존재 여부 확인
         if st.session_state.production_data is None or len(st.session_state.production_data) == 0:
-            st.warning("생산 데이터가 없습니다.")
+            st.warning(translate("생산 데이터가 없습니다."))
             return
         
         # 해당 날짜의 데이터만 필터링
@@ -94,7 +95,7 @@ def show():
                 filtered_records.append(record)
         
         if not filtered_records:
-            st.warning(f"{target_date_str} 날짜에 해당하는 생산 데이터가 없습니다.")
+            st.warning(f"{target_date_str} " + translate("날짜에 해당하는 생산 데이터가 없습니다."))
             return
         
         # 데이터프레임 생성
@@ -111,13 +112,13 @@ def show():
         daily_averages = calculate_daily_averages(worker_stats)
 
         # 일간 평균 KPI 표시
-        st.subheader("일간 평균 KPI")
+        st.subheader(translate("일간 평균 KPI"))
         col1, col2, col3 = st.columns(3)
         
         with col1:
             st.markdown(f"""
                 <div class="highlight-box">
-                    <div class="metric-label">🎯 생산 목표 달성률</div>
+                    <div class="metric-label">🎯 {translate('생산 목표 달성률')}</div>
                     <div style="font-size: 24px; font-weight: bold;">{daily_averages['production_rate']:.1f}%</div>
                 </div>
             """, unsafe_allow_html=True)
@@ -125,7 +126,7 @@ def show():
         with col2:
             st.markdown(f"""
                 <div class="highlight-box">
-                    <div class="metric-label">⚠️ 불량률</div>
+                    <div class="metric-label">⚠️ {translate('불량률')}</div>
                     <div style="font-size: 24px; font-weight: bold;">{daily_averages['defect_rate']:.1f}%</div>
                 </div>
             """, unsafe_allow_html=True)
@@ -133,19 +134,19 @@ def show():
         with col3:
             st.markdown(f"""
                 <div class="highlight-box">
-                    <div class="metric-label">⚡ 작업효율</div>
+                    <div class="metric-label">⚡ {translate('작업효율')}</div>
                     <div style="font-size: 24px; font-weight: bold;">{daily_averages['efficiency_rate']:.1f}%</div>
                 </div>
             """, unsafe_allow_html=True)
 
         # 최고 성과자 KPI 표시
-        st.subheader("최고 성과자")
+        st.subheader(translate("최고 성과자"))
         col1, col2, col3 = st.columns(3)
         
         with col1:
             st.markdown(f"""
                 <div class="highlight-box">
-                    <div class="metric-label">🎯 생산 목표 달성률</div>
+                    <div class="metric-label">🎯 {translate('생산 목표 달성률')}</div>
                     <div style="font-size: 24px; font-weight: bold;">{best_performers['production_rate']:.1f}%</div>
                     <div class="performer">{best_performers['production_worker']}</div>
                 </div>
@@ -154,7 +155,7 @@ def show():
         with col2:
             st.markdown(f"""
                 <div class="highlight-box">
-                    <div class="metric-label">⚠️ 불량률</div>
+                    <div class="metric-label">⚠️ {translate('불량률')}</div>
                     <div style="font-size: 24px; font-weight: bold;">{best_performers['defect_rate']:.1f}%</div>
                     <div class="performer">{best_performers['defect_worker']}</div>
                 </div>
@@ -163,21 +164,21 @@ def show():
         with col3:
             st.markdown(f"""
                 <div class="highlight-box">
-                    <div class="metric-label">⚡ 작업효율</div>
+                    <div class="metric-label">⚡ {translate('작업효율')}</div>
                     <div style="font-size: 24px; font-weight: bold;">{best_performers['efficiency_rate']:.1f}%</div>
                     <div class="performer">{best_performers['efficiency_worker']}</div>
                 </div>
             """, unsafe_allow_html=True)
 
         # 작업자별 생산량 그래프
-        st.subheader("작업자별 생산량")
+        st.subheader(translate("작업자별 생산량"))
         
         # 그래프 데이터 준비
         fig = go.Figure()
         
         # 목표수량 막대 그래프 (하늘색)
         fig.add_trace(go.Bar(
-            name='목표수량',
+            name=translate('목표수량'),
             x=worker_stats['작업자'],
             y=worker_stats['목표수량'],
             marker_color='rgba(173, 216, 230, 0.7)'  # 하늘색
@@ -185,7 +186,7 @@ def show():
         
         # 생산수량 꺾은선 그래프 (파란색)
         fig.add_trace(go.Scatter(
-            name='생산수량',
+            name=translate('생산수량'),
             x=worker_stats['작업자'],
             y=worker_stats['생산수량'],
             line=dict(color='royalblue', width=2),
@@ -194,7 +195,7 @@ def show():
         
         # 불량수량 꺾은선 그래프 (빨간색)
         fig.add_trace(go.Scatter(
-            name='불량수량',
+            name=translate('불량수량'),
             x=worker_stats['작업자'],
             y=worker_stats['불량수량'],
             line=dict(color='red', width=2),
@@ -203,43 +204,60 @@ def show():
         
         # 그래프 레이아웃 설정
         fig.update_layout(
-            height=400,
-            margin=dict(l=20, r=20, t=40, b=20),
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="right",
-                x=1
-            ),
-            yaxis=dict(
-                title='수량',
-                gridcolor='lightgray',
-                gridwidth=0.5,
-                zeroline=False
-            ),
-            plot_bgcolor='white'
+            title=translate('작업자별 생산 실적'),
+            xaxis_title=translate('작업자'),
+            yaxis_title=translate('수량'),
+            legend_title=translate('항목'),
+            barmode='group',
+            height=500
         )
         
-        # 그래프 표시
         st.plotly_chart(fig, use_container_width=True)
         
-        # 작업자별 일간 실적 테이블
-        st.subheader("작업자별 일간 실적")
+        # 작업자별 목표 달성률 및 불량률 그래프
+        st.subheader(translate("작업자별 목표달성률 및 불량률"))
         
-        # 작업효율에 % 추가
-        worker_stats['작업효율'] = worker_stats['작업효율'].astype(str) + '%'
+        # 그래프 데이터 준비
+        fig2 = go.Figure()
         
-        # 테이블 표시
-        display_columns = ['작업자', '목표수량', '생산수량', '불량수량', '작업효율']
-        st.dataframe(
-            worker_stats[display_columns],
-            use_container_width=True,
-            hide_index=True
+        # 목표달성률 (파란색)
+        fig2.add_trace(go.Bar(
+            name=translate('목표달성률 (%)'),
+            x=worker_stats['작업자'],
+            y=worker_stats['생산률'],
+            marker_color='rgba(65, 105, 225, 0.7)'  # 로얄블루
+        ))
+        
+        # 불량률 (빨간색)
+        fig2.add_trace(go.Bar(
+            name=translate('불량률 (%)'),
+            x=worker_stats['작업자'],
+            y=worker_stats['불량률'],
+            marker_color='rgba(255, 99, 71, 0.7)'  # 토마토 색상
+        ))
+        
+        # 그래프 레이아웃 설정
+        fig2.update_layout(
+            title=translate('작업자별 생산성 지표'),
+            xaxis_title=translate('작업자'),
+            yaxis_title=translate('비율 (%)'),
+            legend_title=translate('지표'),
+            barmode='group',
+            height=500
         )
         
+        st.plotly_chart(fig2, use_container_width=True)
+        
+        # 상세 데이터 표시
+        with st.expander(translate("상세 데이터"), expanded=False):
+            st.subheader(translate("원본 데이터"))
+            st.dataframe(df)
+            
+            st.subheader(translate("작업자별 통계"))
+            st.dataframe(worker_stats)
+        
     except Exception as e:
-        st.error(f"데이터 처리 중 오류가 발생했습니다: {str(e)}")
+        st.error(f"{translate('데이터 처리 중 오류가 발생했습니다')}: {str(e)}")
         import traceback
         print(f"[ERROR] 상세 오류: {traceback.format_exc()}")
 
@@ -251,49 +269,50 @@ def calculate_worker_stats(df):
         '불량수량': 'sum'
     }).reset_index()
     
-    # 작업효율 계산
-    worker_stats['작업효율'] = round(
-        ((worker_stats['생산수량'] - worker_stats['불량수량']) / worker_stats['목표수량']) * 100,
-        1
-    )
+    # 생산률, A등급률 등 계산
+    worker_stats['생산률'] = (worker_stats['생산수량'] / worker_stats['목표수량'] * 100).round(1)
+    worker_stats['불량률'] = (worker_stats['불량수량'] / worker_stats['생산수량'] * 100).round(1).fillna(0)
+    worker_stats['효율성'] = ((worker_stats['생산수량'] - worker_stats['불량수량']) / worker_stats['목표수량'] * 100).round(1)
+    
     return worker_stats
 
 def calculate_daily_averages(worker_stats):
     # 일간 평균 KPI 계산
-    total_target = worker_stats['목표수량'].sum()
-    total_production = worker_stats['생산수량'].sum()
-    total_defects = worker_stats['불량수량'].sum()
-    
-    return {
-        'production_rate': (total_production / total_target) * 100,
-        'defect_rate': (total_defects / total_production) * 100 if total_production > 0 else 0,
-        'efficiency_rate': ((total_production - total_defects) / total_target) * 100
+    daily_averages = {
+        'production_rate': worker_stats['생산률'].mean(),
+        'defect_rate': worker_stats['불량률'].mean(),
+        'efficiency_rate': worker_stats['효율성'].mean()
     }
+    
+    return daily_averages
 
 def calculate_best_performers(worker_stats):
     # 최고 성과자 및 해당 KPI 값 계산
-    if len(worker_stats) == 0:
-        return {
-            'production_worker': '-',
-            'production_rate': 0,
-            'defect_worker': '-',
-            'defect_rate': 0,
-            'efficiency_worker': '-',
-            'efficiency_rate': 0
-        }
+    best_performers = {}
     
-    best_production = worker_stats.loc[worker_stats['생산수량'].idxmax()]
-    best_defect = worker_stats.loc[worker_stats['불량수량'].idxmin()]
-    best_efficiency = worker_stats.loc[worker_stats['작업효율'].idxmax()]
+    # 생산 목표 달성률이 가장 높은 작업자
+    best_production_idx = worker_stats['생산률'].idxmax()
+    best_performers['production_worker'] = worker_stats.loc[best_production_idx, '작업자']
+    best_performers['production_rate'] = worker_stats.loc[best_production_idx, '생산률']
     
-    return {
-        'production_worker': best_production['작업자'],
-        'production_rate': (best_production['생산수량'] / best_production['목표수량']) * 100,
-        'defect_worker': best_defect['작업자'],
-        'defect_rate': (best_defect['불량수량'] / best_defect['생산수량']) * 100 if best_defect['생산수량'] > 0 else 0,
-        'efficiency_worker': best_efficiency['작업자'],
-        'efficiency_rate': best_efficiency['작업효율']
-    }
+    # 불량률이 가장 낮은 작업자 (불량품이 0개인 작업자가 여러 명이면 생산량이 더 많은 작업자)
+    valid_defect = worker_stats[worker_stats['생산수량'] > 0]  # 생산량이 0인 경우 제외
+    if len(valid_defect) > 0:
+        # 불량률이 있는 경우
+        best_defect_idx = valid_defect['불량률'].idxmin()
+        best_performers['defect_worker'] = worker_stats.loc[best_defect_idx, '작업자']
+        best_performers['defect_rate'] = worker_stats.loc[best_defect_idx, '불량률']
+    else:
+        # 불량률 데이터가 없는 경우
+        best_performers['defect_worker'] = translate("데이터 없음")
+        best_performers['defect_rate'] = 0.0
+    
+    # 작업 효율성이 가장 높은 작업자
+    best_efficiency_idx = worker_stats['효율성'].idxmax()
+    best_performers['efficiency_worker'] = worker_stats.loc[best_efficiency_idx, '작업자']
+    best_performers['efficiency_rate'] = worker_stats.loc[best_efficiency_idx, '효율성']
+    
+    return best_performers
 
 def show_daily_report():
     """
