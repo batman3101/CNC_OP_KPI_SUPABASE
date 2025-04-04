@@ -3,13 +3,13 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from utils.supabase_db import SupabaseDB
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import calendar
 from dateutil.relativedelta import relativedelta
 from utils.translations import translate
 
 def show_monthly_report():
-    st.title(translate("🗓️ 월간 리포트"))
+    st.title(translate("📊 월간 리포트"))
     
     # CSS 스타일 추가
     st.markdown("""
@@ -17,9 +17,9 @@ def show_monthly_report():
         .metric-box {
             background-color: #E8F4F9;
             border-radius: 10px;
-            padding: 10px;
-            margin: 5px 0;
-            line-height: 1.3;   
+            padding: 15px;
+            margin: 10px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .highlight-box {
             background-color: #E8F4F9;
@@ -30,16 +30,13 @@ def show_monthly_report():
         }
         .metric-label {
             color: #666;
-            font-size: 1.0em;
-            font-weight: bold;
+            font-size: 0.9em;
             margin-bottom: 5px;
-            line-height: 1.3;    
         }
         .metric-value {
             font-size: 24px;
             font-weight: bold;
             color: #2C3E50;
-            line-height: 1.3;    
         }
         .metric-icon {
             font-size: 1.2em;
@@ -58,49 +55,79 @@ def show_monthly_report():
         </style>
     """, unsafe_allow_html=True)
     
-    # 날짜 선택
-    selected_date = st.date_input(
-        translate("조회할 월"),
-        datetime.now().date()
+    # 현재 월
+    today = datetime.now()
+    current_year = today.year
+    current_month = today.month
+    
+    # 월 선택 옵션 생성
+    month_options = []
+    for i in range(12):
+        # 현재 월부터 거꾸로 이전 12개월
+        year = current_year
+        month = current_month - i
+        
+        # 월이 0 이하면 이전 년도로 조정
+        if month <= 0:
+            month += 12
+            year -= 1
+        
+        # 날짜 객체 생성
+        d = date(year, month, 1)
+        # 월 이름 형식 (예: "2023년 4월")
+        month_label = translate(d.strftime("%Y년 %m월"))
+        month_options.append((month_label, year, month))
+    
+    # 월 선택 드롭다운
+    selected_month = st.selectbox(
+        translate("월 선택"),
+        options=[option[0] for option in month_options],
+        index=0
     )
     
-    # 선택된 월의 시작일과 종료일 계산
-    start_of_month = selected_date.replace(day=1)
-    end_of_month = (start_of_month + relativedelta(months=1, days=-1))
+    # 선택된 월의 년도와 월 가져오기
+    selected_idx = [option[0] for option in month_options].index(selected_month)
+    year = month_options[selected_idx][1]
+    month = month_options[selected_idx][2]
+    
+    # 해당 월의 첫날과 마지막 날 계산
+    first_day = date(year, month, 1)
+    # 해당 월의 마지막 날짜 계산
+    last_day = date(year, month, calendar.monthrange(year, month)[1])
     
     # 데이터 조회
     records = st.session_state.db.get_production_records(
-        start_date=start_of_month.strftime('%Y-%m-%d'),
-        end_date=end_of_month.strftime('%Y-%m-%d')
+        start_date=first_day.strftime('%Y-%m-%d'),
+        end_date=last_day.strftime('%Y-%m-%d')
     )
     
-    if records:
-        df = pd.DataFrame(records)
+    if not records:
+        st.info(translate(f"{translate(first_day.strftime('%Y년 %m월'))} 기간의 생산 데이터가 없습니다."))
+        return
         
-        # 작업자별 통계 계산
-        worker_stats = df.groupby('작업자').agg({
-            '목표수량': 'sum',
-            '생산수량': 'sum',
-            '불량수량': 'sum'
-        }).reset_index()
+    df = pd.DataFrame(records)
         
-        # 작업효율 계산
-        worker_stats['작업효율'] = round(
-            ((worker_stats['생산수량'] - worker_stats['불량수량']) / worker_stats['목표수량']) * 100,
-            1
-        )
+    # 작업자별 통계 계산
+    worker_stats = df.groupby('작업자').agg({
+        '목표수량': 'sum',
+        '생산수량': 'sum',
+        '불량수량': 'sum'
+    }).reset_index()
         
-        # KPI 계산 및 표시
-        display_monthly_kpi(worker_stats)
+    # 작업효율 계산
+    worker_stats['작업효율'] = round(
+        ((worker_stats['생산수량'] - worker_stats['불량수량']) / worker_stats['목표수량']) * 100,
+        1
+    )
         
-        # 그래프 표시
-        display_monthly_charts(worker_stats)
+    # KPI 계산 및 표시
+    display_monthly_kpi(worker_stats)
         
-        # 작업자별 월간 실적 테이블 표시
-        display_monthly_stats_table(worker_stats)
+    # 그래프 표시
+    display_monthly_charts(worker_stats)
         
-    else:
-        st.info(f"{selected_date.strftime('%Y-%m')} {translate('월의 생산 실적이 없습니다.')}")
+    # 작업자별 월간 실적 테이블 표시
+    display_monthly_stats_table(worker_stats)
 
 def display_monthly_kpi(worker_stats):
     # 월간 평균 KPI 계산

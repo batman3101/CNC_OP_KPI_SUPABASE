@@ -118,7 +118,7 @@ def show_worker_performance(records):
     st.plotly_chart(fig, use_container_width=True)
 
 def show_dashboard():
-    st.title(translate("📈 CNC 생산 종합 대시보드"))
+    st.title(translate("📈 ALMUS TECH CNC 생산 종합 대시보드"))
     
     # CSS 스타일 추가
     st.markdown("""
@@ -190,7 +190,7 @@ def show_dashboard():
             selected_date = st.date_input(translate("조회할 날짜"), today)
             start_date = selected_date
             end_date = selected_date
-            date_title = selected_date.strftime("%Y년 %m월 %d일")
+            date_title = translate(selected_date.strftime("%Y년 %m월 %d일"))
         elif selected_period == translate("주간"):
             # 주간 선택 시 시작 날짜 선택 가능
             # 선택한 날짜가 속한 주의 월요일 계산
@@ -200,7 +200,7 @@ def show_dashboard():
             adjusted_start = selected_start_date - timedelta(days=selected_start_date.weekday())
             start_date = adjusted_start
             end_date = start_date + timedelta(days=6)
-            date_title = f"{start_date.strftime('%Y년 %m월 %d일')} ~ {end_date.strftime('%Y년 %m월 %d일')}"
+            date_title = translate(f"{start_date.strftime('%Y년 %m월 %d일')} ~ {end_date.strftime('%Y년 %m월 %d일')}")
         elif selected_period == translate("월간"):
             # 월간 선택 시 년월 선택
             selected_month = st.date_input(translate("조회할 월"), today.replace(day=1))
@@ -211,14 +211,14 @@ def show_dashboard():
             else:
                 next_month = selected_month.replace(month=selected_month.month+1, day=1)
             end_date = next_month - timedelta(days=1)
-            date_title = selected_month.strftime("%Y년 %m월")
+            date_title = translate(selected_month.strftime("%Y년 %m월"))
         else:  # 연간
             # 연간 선택 시 년도 선택
             year_options = list(range(datetime.now().year, datetime.now().year - 5, -1))
             selected_year = st.selectbox(translate("조회할 연도"), year_options)
             start_date = datetime(selected_year, 1, 1).date()
             end_date = datetime(selected_year, 12, 31).date()
-            date_title = f"{selected_year}{translate('년')}"
+            date_title = translate(f"{selected_year}년")
         
         # 라인 선택
         line_options = [translate("전체"), "B-01", "B-02", "B-03", "B-04", "B-05", "B-06"]

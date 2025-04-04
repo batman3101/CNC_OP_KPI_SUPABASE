@@ -36,17 +36,28 @@ def show_weekly_report():
         </style>
     """, unsafe_allow_html=True)
 
-    # 날짜 선택 레이블 변경
-    selected_date = st.date_input(
-        translate("조회할 주간 시작일"),
-        datetime.now().date()
+    # 현재 날짜 기준으로 이번 주 월요일 계산
+    today = datetime.now().date()
+    monday = today - timedelta(days=today.weekday())
+    
+    # 주간 선택: 최근 4주 선택 가능
+    weeks = []
+    for i in range(4):
+        week_monday = monday - timedelta(weeks=i)
+        week_sunday = week_monday + timedelta(days=6)
+        week_label = translate(f"{week_monday.strftime('%Y년 %m월 %d일')} ~ {week_sunday.strftime('%Y년 %m월 %d일')}")
+        weeks.append((week_label, week_monday, week_sunday))
+    
+    selected_week = st.selectbox(
+        translate("주 선택"),
+        options=[week[0] for week in weeks],
+        index=0
     )
     
-    # 주간 날짜 계산
-    start_of_week = selected_date - timedelta(days=selected_date.weekday())
-    end_of_week = start_of_week + timedelta(days=6)
-    
-    st.write(f"{translate('조회 기간')}: {start_of_week.strftime('%Y-%m-%d')} ~ {end_of_week.strftime('%Y-%m-%d')}")
+    # 선택된 주의 시작일과 종료일 가져오기
+    selected_week_idx = [week[0] for week in weeks].index(selected_week)
+    start_date = weeks[selected_week_idx][1]
+    end_date = weeks[selected_week_idx][2]
     
     # 데이터 조회
     try:
@@ -55,13 +66,17 @@ def show_weekly_report():
             st.session_state.db = SupabaseDB()
         
         records = st.session_state.db.get_production_records(
-            start_date=start_of_week.strftime('%Y-%m-%d'),
-            end_date=end_of_week.strftime('%Y-%m-%d')
+            start_date=start_date.strftime('%Y-%m-%d'),
+            end_date=end_date.strftime('%Y-%m-%d')
         )
     except Exception as e:
         st.error(f"{translate('데이터 조회 중 오류 발생')}: {e}")
         import traceback
         st.code(traceback.format_exc())
+
+    if not records:
+        st.info(translate(f"{translate(start_date.strftime('%Y년 %m월 %d일'))} ~ {translate(end_date.strftime('%Y년 %m월 %d일'))} 기간의 생산 데이터가 없습니다."))
+        return
 
     if records:
         df = pd.DataFrame(records)
@@ -202,9 +217,6 @@ def show_weekly_report():
             hide_index=True
         )
         
-    else:
-        st.info(f"{start_of_week.strftime('%Y-%m-%d')} ~ {end_of_week.strftime('%Y-%m-%d')} {translate('기간의 생산 실적이 없습니다.')}")
-
 def calculate_worker_stats(df):
     # 작업자별 통계 계산
     worker_stats = df.groupby('작업자').agg({

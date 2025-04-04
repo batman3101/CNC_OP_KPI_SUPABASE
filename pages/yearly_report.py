@@ -183,4 +183,4 @@ def show_yearly_report():
             """, unsafe_allow_html=True)
             
     else:
-        st.info(f"{year}{translate('년의 생산 실적이 없습니다.')}") 
+        st.info(translate(f"{translate(f'{year}년')}의 생산 실적이 없습니다.")) 

@@ -95,7 +95,7 @@ def show():
                 filtered_records.append(record)
         
         if not filtered_records:
-            st.warning(f"{target_date_str} " + translate("날짜에 해당하는 생산 데이터가 없습니다."))
+            st.warning(translate(f"{translate(target_date.strftime('%Y년 %m월 %d일'))} 날짜에 해당하는 생산 데이터가 없습니다."))
             return
         
         # 데이터프레임 생성
