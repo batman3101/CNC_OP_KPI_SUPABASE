@@ -29,7 +29,7 @@ def login():
     st.title(translate("생산관리 시스템"))
     
     with st.form("login_form"):
-        username = st.text_input(translate("사용자 이름"))
+        email = st.text_input(translate("이메일"))
         password = st.text_input(translate("비밀번호"), type="password")
         submit_button = st.form_submit_button(translate("로그인"))
     
@@ -42,18 +42,18 @@ def login():
                 
                 # 일치하는 사용자 찾기
                 for user in users:
-                    if (user.get('이름') == username and 
+                    if (user.get('이메일', '').strip().lower() == email.strip().lower() and 
                         verify_password(user.get('비밀번호', '').encode('utf-8'), password)):
                         
                         # 로그인 성공 - 세션 상태 업데이트
                         st.session_state.authenticated = True
-                        st.session_state.username = username
-                        st.session_state.user_email = user.get('이메일', '')
+                        st.session_state.username = user.get('이름')
+                        st.session_state.user_email = email.strip().lower()
                         st.session_state.user_role = user.get('권한', '')
                         
                         return {
-                            'username': username,
-                            'email': user.get('이메일', '')
+                            'username': user.get('이름'),
+                            'email': email.strip().lower()
                         }
                 
                 # 로그인 실패 처리

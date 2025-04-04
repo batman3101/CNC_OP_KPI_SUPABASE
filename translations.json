@@ -69,7 +69,9 @@
     "최대": "최대",
     "최소": "최소",
     "Supabase 연결 정보가 설정되어 있지 않습니다. '데이터 관리' 메뉴에서 설정해주세요.": "Supabase 연결 정보가 설정되어 있지 않습니다. '데이터 관리' 메뉴에서 설정해주세요.",
-    "[AUTO-SYNC] 데이터 자동 동기화 완료": "[AUTO-SYNC] 데이터 자동 동기화 완료"
+    "[AUTO-SYNC] 데이터 자동 동기화 완료": "[AUTO-SYNC] 데이터 자동 동기화 완료",
+    "사용자 이름 또는 이메일": "사용자 이름 또는 이메일",
+    "이메일": "이메일"
   },
   "vi": {
     "생산관리 시스템": "Hệ thống quản lý sản xuất",
@@ -141,6 +143,8 @@
     "최대": "Tối đa",
     "최소": "Tối thiểu",
     "Supabase 연결 정보가 설정되어 있지 않습니다. '데이터 관리' 메뉴에서 설정해주세요.": "Thông tin kết nối Supabase chưa được thiết lập. Vui lòng thiết lập trong menu 'Quản lý dữ liệu'.",
-    "[AUTO-SYNC] 데이터 자동 동기화 완료": "[AUTO-SYNC] Đồng bộ hóa dữ liệu tự động hoàn tất"
+    "[AUTO-SYNC] 데이터 자동 동기화 완료": "[AUTO-SYNC] Đồng bộ hóa dữ liệu tự động hoàn tất",
+    "사용자 이름 또는 이메일": "Tên người dùng hoặc Email",
+    "이메일": "Email"
   }
 }
