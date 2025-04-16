@@ -166,7 +166,7 @@ def delete_worker_data(worker_name):
         return False
 
 def show_worker_management():
-    st.title(translate("👨‍�� 작업자 관리"))
+    st.title(translate("👩‍🏭‍ 작업자 관리"))
     
     # 세션 상태 초기화
     if 'delete_mode' not in st.session_state:

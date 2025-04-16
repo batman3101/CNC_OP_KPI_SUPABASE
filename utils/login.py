@@ -50,7 +50,9 @@ def login():
         return {'username': st.session_state.username, 'email': st.session_state.user_email}
     
     # 로그인 폼
-    st.title(translate("생산관리 시스템"))
+    st.markdown("""
+    <h1 style="color:#000080;">ALMUS TECH CNC 작업자 KPI 관리 시스템</h1>
+    """, unsafe_allow_html=True)
     
     with st.form("login_form"):
         email = st.text_input(translate("이메일"))

@@ -39,9 +39,20 @@ st.set_page_config(
     }
 )
 
-# 메인 페이지 타이틀
+# 메인 페이지 타이틀 제거 (로그인 페이지에서만 표시)
 if not st.session_state.get('authenticated', False):
-    st.title(translate("ALMUS TECH CNC 작업자 KPI 관리 시스템"))
+    # 타이틀은 login.py에서 처리
+    pass
+
+# CSS 스타일 추가 - 로그인 후 내부 페이지 제목용
+page_title_style = """
+<style>
+h1 {
+    color: #000080 !important;
+}
+</style>
+"""
+st.markdown(page_title_style, unsafe_allow_html=True)
 
 # 페이지 숨기기 CSS
 hide_pages = """
