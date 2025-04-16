@@ -322,10 +322,10 @@ def show_data_sync():
             st.info(translate(f"현재 API Key: {masked_key}"))
             
             # 새로운 설정 입력 폼
-            with st.form(translate("supabase_settings_form")):
+            with st.form("supabase_settings_form_update"):
                 st.write(translate("Supabase 연결 정보 설정"))
-                new_url = st.text_input(translate("Supabase URL"), value=current_url, key=translate("supabase_url_input"))
-                new_key = st.text_input(translate("Supabase API Key"), value=current_key, type="password", key=translate("supabase_key_input"))
+                new_url = st.text_input(translate("Supabase URL"), value=current_url, key="supabase_url_input")
+                new_key = st.text_input(translate("Supabase API Key"), value=current_key, type="password", key="supabase_key_input")
                 
                 submitted = st.form_submit_button(translate("설정 저장"))
                 
@@ -347,10 +347,10 @@ def show_data_sync():
             st.warning(translate("Supabase 연결 정보가 설정되어 있지 않습니다."))
             
             # 새로운 설정 입력 폼
-            with st.form(translate("supabase_settings_form_new")):
+            with st.form("supabase_settings_form_new_setup"):
                 st.write(translate("Supabase 연결 정보 설정"))
-                new_url = st.text_input(translate("Supabase URL"), value=current_url, key=translate("supabase_url_input_new"))
-                new_key = st.text_input(translate("Supabase API Key"), value=current_key, type="password", key=translate("supabase_key_input_new"))
+                new_url = st.text_input(translate("Supabase URL"), value=current_url, key="supabase_url_input_new")
+                new_key = st.text_input(translate("Supabase API Key"), value=current_key, type="password", key="supabase_key_input_new")
                 
                 submitted = st.form_submit_button(translate("설정 저장"))
                 
@@ -372,8 +372,8 @@ def show_data_sync():
         # Supabase 테이블 생성 안내
         st.subheader(translate("Supabase 테이블 설정 안내"))
         
-        with st.expander(translate("테이블 구조 안내"), expanded=False):
-            st.write(translate("""
+        with st.expander("테이블 구조 안내", expanded=False):
+            table_structure = """
             Supabase 대시보드에서 다음 테이블을 생성해야 합니다:
             
             1. **Users 테이블**
@@ -407,11 +407,13 @@ def show_data_sync():
                - `STT`: 순번
                - `MODEL`: 모델명
                - `PROCESS`: 공정
-            """))
+            """
+            st.write("테이블 구조 안내")
+            st.text(table_structure)
         
         # SQL 스크립트 제공 - 별도의 expander로 분리
-        with st.expander(translate("테이블 생성 SQL 스크립트")):
-            st.code("""
+        with st.expander("테이블 생성 SQL 스크립트"):
+            sql_script = """
     -- Users 테이블 생성
     CREATE TABLE Users (
       id SERIAL PRIMARY KEY,
@@ -457,13 +459,15 @@ def show_data_sync():
       created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
       updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     );
-                """, language="sql"))
+            """
+            st.code(sql_script, language="sql")
         
-        st.info(translate("위 SQL 스크립트를 Supabase의 SQL 편집기에서 실행하여 필요한 테이블을 생성할 수 있습니다."))
+        st.info("위 SQL 스크립트를 Supabase의 SQL 편집기에서 실행하여 필요한 테이블을 생성할 수 있습니다.")
 
         # 캐시 초기화
-        st.session_state.db._invalidate_cache()
-        st.session_state.production_data = None
+        if 'db' in st.session_state:
+            st.session_state.db._invalidate_cache()
+            st.session_state.production_data = None
         
     # 데이터 초기화 탭
     with tab3:

@@ -417,37 +417,37 @@ def add_production_data():
         
         # 저장 버튼
         submitted = st.form_submit_button(translate("실적 저장"), use_container_width=True)
-    
-    # 폼 제출 처리
-    if submitted:
-        if not worker:
-            st.error(translate("작업자를 선택해주세요."))
-        elif not line:
-            st.error(translate("라인을 선택해주세요."))
-        elif not model:
-            st.error(translate("모델명을 선택해주세요."))
-        else:
-            try:
-                # 새 레코드 생성
-                record = {
-                    "id": str(uuid.uuid4()),
-                    "날짜": date.strftime("%Y-%m-%d"),
-                    "작업자": worker,
-                    "라인번호": line,
-                    "모델차수": model,
-                    "목표수량": int(target),
-                    "생산수량": int(prod),
-                    "불량수량": int(defect),
-                    "등록시간": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                }
-                
-                # 데이터 저장
-                save_production_data(record)
-                
-                st.success(translate("생산 실적이 저장되었습니다."))
-                st.rerun()
-            except Exception as e:
-                st.error(f"{translate('생산 실적 저장 중 오류가 발생했습니다')}: {str(e)}")
+        
+        # 폼 제출 처리
+        if submitted:
+            if not worker:
+                st.error(translate("작업자를 선택해주세요."))
+            elif not line:
+                st.error(translate("라인을 선택해주세요."))
+            elif not model:
+                st.error(translate("모델명을 선택해주세요."))
+            else:
+                try:
+                    # 새 레코드 생성
+                    record = {
+                        "id": str(uuid.uuid4()),
+                        "날짜": date.strftime("%Y-%m-%d"),
+                        "작업자": worker,
+                        "라인번호": line,
+                        "모델차수": model,
+                        "목표수량": int(target),
+                        "생산수량": int(prod),
+                        "불량수량": int(defect),
+                        "등록시간": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }
+                    
+                    # 데이터 저장
+                    save_production_data(record)
+                    
+                    st.success(translate("생산 실적이 저장되었습니다."))
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"{translate('생산 실적 저장 중 오류가 발생했습니다')}: {str(e)}")
 
 def view_production_data():
     st.subheader(translate("실적 조회"))
@@ -556,7 +556,7 @@ def view_production_data():
             if st.button(translate("다음"), key="view_next_page"):
                 st.session_state.view_page_number = min(total_pages, st.session_state.view_page_number + 1)
                 st.rerun()
-        
+                
         # 요약 통계
         st.markdown("---")
         st.markdown(f"### {translate('📊 통계 요약')}")
