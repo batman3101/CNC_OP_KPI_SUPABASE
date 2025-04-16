@@ -171,6 +171,13 @@ def show_dashboard():
             margin-bottom: 10px;
             border-radius: 5px;
         }
+        .success-card {
+            background-color: #d4edda;
+            border-left: 5px solid #28a745;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
         </style>
     """, unsafe_allow_html=True)
     
@@ -394,7 +401,10 @@ def show_dashboard():
     else:
         show_worker_performance(df.to_dict('records'))
     
-    # 불량률 경고 확인
+    # KPI 알림 섹션 추가
+    st.markdown(f"<div class='section-title'>{translate('KPI 상태 알림')}</div>", unsafe_allow_html=True)
+    
+    # 불량률 알림
     if defect_rate > TARGET_DEFECT_RATE:
         st.markdown(f"""
             <div class="warning-card">
@@ -402,12 +412,42 @@ def show_dashboard():
                 <p>{translate('현재 불량률')} {defect_rate}%{translate('는 목표 불량률')} {TARGET_DEFECT_RATE}%{translate('를 초과했습니다. 품질 관리가 필요합니다.')}</p>
             </div>
         """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+            <div class="success-card">
+                <h4>{translate('✅ 불량률 양호')}</h4>
+                <p>{translate('현재 불량률')} {defect_rate}%{translate('는 목표 불량률')} {TARGET_DEFECT_RATE}%{translate('보다 낮습니다. 품질 관리가 잘 되고 있습니다.')}</p>
+            </div>
+        """, unsafe_allow_html=True)
     
-    # 달성률 경고 확인
+    # 달성률 알림
     if production_rate < TARGET_ACHIEVEMENT_RATE:
         st.markdown(f"""
             <div class="alert-card">
                 <h4>{translate('⚠️ 생산목표 미달')}</h4>
                 <p>{translate('현재 달성률')} {production_rate}%{translate('는 목표 달성률')} {TARGET_ACHIEVEMENT_RATE}%{translate('에 미치지 못했습니다. 생산성 향상이 필요합니다.')}</p>
+            </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+            <div class="success-card">
+                <h4>{translate('✅ 생산목표 달성')}</h4>
+                <p>{translate('현재 달성률')} {production_rate}%{translate('는 목표 달성률')} {TARGET_ACHIEVEMENT_RATE}%{translate('를 달성했습니다. 생산성이 양호합니다.')}</p>
+            </div>
+        """, unsafe_allow_html=True)
+    
+    # 작업효율 알림
+    if efficiency_rate < 95:  # 작업효율 목표값 95%
+        st.markdown(f"""
+            <div class="warning-card">
+                <h4>{translate('⚠️ 작업효율 미달')}</h4>
+                <p>{translate('현재 작업효율')} {efficiency_rate}%{translate('는 목표 작업효율')} 95%{translate('에 미치지 못했습니다. 작업 효율성 개선이 필요합니다.')}</p>
+            </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+            <div class="success-card">
+                <h4>{translate('✅ 작업효율 양호')}</h4>
+                <p>{translate('현재 작업효율')} {efficiency_rate}%{translate('는 목표 작업효율')} 95%{translate('를 달성했습니다. 작업 효율성이 양호합니다.')}</p>
             </div>
         """, unsafe_allow_html=True) 
