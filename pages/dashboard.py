@@ -8,8 +8,8 @@ from plotly.subplots import make_subplots
 from utils.translations import translate
 
 # 전역 설정 변수
-TARGET_DEFECT_RATE = 0.2  # 목표 불량률 (%)
-TARGET_ACHIEVEMENT_RATE = 90  # 목표 달성률 (%)
+TARGET_DEFECT_RATE = 0.02  # 목표 불량률 (%)
+TARGET_ACHIEVEMENT_RATE = 96  # 목표 달성률 (%)
 
 def calculate_production_rate(records):
     """생산목표 달성률 계산"""
@@ -112,8 +112,8 @@ def show_worker_performance(records):
     new_names = {col: translate(col) for col in ['달성률', '작업효율']}
     fig.for_each_trace(lambda t: t.update(name = new_names[t.name]))
     
-    fig.add_hline(y=95, line_dash="dash", line_color="green", annotation_text=translate("목표 달성률 95%"))
-    fig.add_hline(y=90, line_dash="dash", line_color="red", annotation_text=translate("목표 작업효율 90%"))
+    fig.add_hline(y=96, line_dash="dash", line_color="green", annotation_text=translate("목표 달성률 96%"))
+    fig.add_hline(y=95, line_dash="dash", line_color="red", annotation_text=translate("목표 작업효율 95%"))
     
     st.plotly_chart(fig, use_container_width=True)
 
@@ -385,8 +385,8 @@ def show_dashboard():
         new_names = {col: translate(col) for col in ['달성률', '작업효율']}
         fig.for_each_trace(lambda t: t.update(name = new_names[t.name]))
         
-        fig.add_hline(y=95, line_dash="dash", line_color="green", annotation_text=translate("목표 달성률 95%"))
-        fig.add_hline(y=90, line_dash="dash", line_color="red", annotation_text=translate("목표 작업효율 90%"))
+        fig.add_hline(y=96, line_dash="dash", line_color="green", annotation_text=translate("목표 달성률 96%"))
+        fig.add_hline(y=95, line_dash="dash", line_color="red", annotation_text=translate("목표 작업효율 95%"))
         
         st.plotly_chart(fig, use_container_width=True)
     
